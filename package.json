@@ -1,0 +1,30 @@
+{
+  "name": "acme-salary-management",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Salary management for ACME's HR Manager: Express + PostgreSQL (Prisma) API and React UI",
+  "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "test": "npm test -w backend && npm test -w frontend",
+    "typecheck": "npm run typecheck -w backend && npm run typecheck -w frontend",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:up": "docker compose up -d --wait",
+    "db:migrate": "npm run db:migrate -w backend"
+  },
+  "devDependencies": {
+    "prettier": "^3.10.1"
+  },
+  "allowScripts": {
+    "prisma@7.10.1": true,
+    "@prisma/engines@7.10.1": true,
+    "esbuild@0.28.2": true
+  }
+}

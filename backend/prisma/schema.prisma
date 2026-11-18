@@ -1,0 +1,10 @@
+// Database schema. Models are added in Step 2 of docs/PLAN.md, each with a migration.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}

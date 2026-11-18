@@ -1,0 +1,15 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+*.log
+.DS_Store
+
+# Local environment files (copy from the *.example files)
+.env
+.env.*
+!.env.example
+!.env.test.example
+
+# Generated Prisma client
+backend/src/generated/
