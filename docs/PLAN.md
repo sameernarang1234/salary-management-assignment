@@ -131,7 +131,7 @@ repositories/  all database access through the Prisma client (and $queryRaw for 
   ↓
 prisma/        schema.prisma, migrations (incl. raw SQL for CHECKs and triggers), seed
 
-domain/        pure functions and types, used by every layer, depends on nothing
+validators/    business rules: Zod schemas, pure functions and types, used by every layer, depends on nothing
 ```
 
 `createApp({ prisma, clock })` wires everything together, so tests pass a Prisma client connected to the test database and a fixed clock. Services that change more than one table use `prisma.$transaction`.
@@ -143,7 +143,7 @@ Each step: write failing tests → make them pass → refactor → commit. Every
 | # | Step | Tests written first |
 |---|---|---|
 | 0 | **Project setup**: workspaces, TypeScript strict, Vitest, Prettier, `docker-compose.yml` with PostgreSQL (dev + test databases), Prisma installed, CI (GitHub Actions with a Postgres service container) | A trivial test proves the runner works in both packages and that the backend can connect to the test database |
-| 1 | **Domain**: component catalogue and salary totals, employee and salary-change validation (Zod), statistics (min/median/mean/max), currency conversion | Pure unit tests, including edge cases (missing Basic, duplicate component, zero or negative amounts, impossible dates, empty lists) |
+| 1 | **Validators**: component catalogue and salary totals, employee and salary-change validation (Zod), statistics (min/median/mean/max), currency conversion | Pure unit tests, including edge cases (missing Basic, duplicate component, zero or negative amounts, impossible dates, empty lists) |
 | 2 | **Database**: `schema.prisma`, first migration with raw-SQL `CHECK`s, append-only triggers and `citext`; test helper that migrates and truncates the test database | Constraint tests against real PostgreSQL: history `UPDATE`/`DELETE` rejected, second user rejected, unknown country rejected, non-positive amount rejected, duplicate email in different case rejected |
 | 3 | **Repositories**: employees (search, filters, sort, paging, active only), components, history | Against the test database, including injection attempts in search and sort, and `%`/`_` wildcard escaping in `ILIKE` |
 | 4 | **Salary service**: create employee (+ first history entry), change salary (one transaction), mark as left | Rollback when part of a change fails; history written exactly once; no change when nothing differs |

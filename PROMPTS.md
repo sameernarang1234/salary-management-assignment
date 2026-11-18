@@ -22,3 +22,57 @@ Read docs/REQUIREMENTS.md and the assessment brief. Before writing any code, cre
 **Outcome:** `docs/PLAN.md` (tech stack, data model, design decisions with trade-offs, test-first build order) and `CLAUDE.md` (engineering rules for the AI). No application code.
 
 **Commit(s):** _to be added_
+
+---
+
+## 2. Step 0: project setup
+
+**Prompt**
+
+```text
+Follow CLAUDE.md and docs/PLAN.md. Implement Step 0 (project setup) only. No features, no Prisma models yet.
+
+* npm workspaces with backend/ and frontend/ packages, TypeScript in strict mode in both, and Node 24 pinned (.nvmrc and "engines").
+* backend: Express 5 with a GET /api/health endpoint, Vitest, Supertest.
+* frontend: React 19 + Vite with an empty placeholder page, Vitest + React Testing Library.
+* docker-compose.yml running PostgreSQL with separate dev and test databases; .env.example for both. Real .env files are git-ignored.
+* Prisma installed and configured, with a datasource only and no models.
+* Tests first:
+  * the health endpoint returns 200;
+  * the backend can connect to the test database;
+  * the frontend placeholder renders.
+* Root scripts: test, typecheck, format, db:up, db:migrate.
+* Run the tests and typecheck and show me the results.
+* Don't commit. I will commit myself with appropriate message.
+```
+
+**Outcome:** npm workspaces (backend, frontend), TypeScript strict, Node 24 pinned; Express 5 health endpoint; Prisma 7 with a datasource only; PostgreSQL 17 in Docker with `salary_dev` and `salary_test`; Vitest, Supertest and React Testing Library. Tests written first and seen failing, then 3/3 passing; typecheck clean.
+
+**Commit(s):** _to be added_
+
+---
+
+## 3. Step 1: validators (business rules)
+
+**Prompt**
+
+```text
+Follow CLAUDE.md and docs/PLAN.md. Implement Step 1 (validators) only, in backend/src/validators. Pure functions and types: no database, no Express, no Prisma imports.
+
+* Salary component catalogue: BASIC (required), HRA, HOUSING, TRANSPORT, SPECIAL, with display names.
+* Salary total: the sum of the components.
+* Zod schemas, with their inferred types:
+  * employee input: full name, email, job title, department, country code, hire date;
+  * salary components: BASIC required, no duplicate or unknown components, whole-number amounts greater than 0, with a sensible upper limit;
+  * salary change: new components, effective date, reason (annual_increment, promotion, correction, other);
+  * reject a salary change whose components are identical to the current ones.
+* Currency conversion: local whole-number amount × USD rate → whole USD, rounded consistently.
+* Tests first, one behaviour at a time. Cover edge cases: missing Basic, duplicate component, zero, negative or decimal amounts, impossible dates (2025-02-30), invalid email, empty strings, unknown reason, rounding.
+* Install Zod in the backend.
+* Run the tests and typecheck and show me the results.
+* Don't commit. I will commit myself.
+```
+
+**Outcome:** `backend/src/validators/`: component catalogue, `salaryTotal`, `isSameSalary`, Zod schemas for salary components, employee input and salary changes (rejects an unchanged salary), real-calendar date check, and exact integer-based USD conversion (halves round up). Upper limit of 100,000,000 per component so totals fit PostgreSQL `int`. 75 new tests written first and seen failing, then 77/77 backend tests passing; typecheck clean.
+
+**Commit(s):** _to be added_

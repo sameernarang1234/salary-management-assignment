@@ -28,8 +28,8 @@ Claude Code loads this file at the start of every session. These rules apply to 
 ## Backend rules
 
 - **TypeScript `strict`.** No `any` without a comment explaining why.
-- **Layers point one way:** `http → services / repositories → db`; `domain` is pure and depends on nothing. Add a service only when there is logic beyond validation and persistence.
-- **All database access lives in `repositories/`**, through the Prisma client. Services and routes never import Prisma models directly; repositories return domain types.
+- **Layers point one way:** `http → services / repositories → db`; `validators/` (business rules: Zod schemas and pure functions) is pure and depends on nothing. Add a service only when there is logic beyond validation and persistence.
+- **All database access lives in `repositories/`**, through the Prisma client. Services and routes never import Prisma models directly; repositories return plain TypeScript types.
 - **Raw SQL only via tagged `$queryRaw` / `$executeRaw`** (parameters bound automatically). Never use `$queryRawUnsafe` / `$executeRawUnsafe` or build SQL strings from input. Sort columns come from an allow-list. Parse raw query results with Zod.
 - **Schema changes only through Prisma migrations** (`prisma migrate dev --name <change>`), committed with the code. Never edit a migration that has already been committed; add a new one. `CHECK` constraints, triggers and extensions go in the migration SQL, with a test proving each one.
 - **Multi-table writes use `prisma.$transaction`.**
