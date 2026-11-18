@@ -76,3 +76,37 @@ Follow CLAUDE.md and docs/PLAN.md. Implement Step 1 (validators) only, in backen
 **Outcome:** `backend/src/validators/`: component catalogue, `salaryTotal`, `isSameSalary`, Zod schemas for salary components, employee input and salary changes (rejects an unchanged salary), real-calendar date check, and exact integer-based USD conversion (halves round up). Upper limit of 100,000,000 per component so totals fit PostgreSQL `int`. 75 new tests written first and seen failing, then 77/77 backend tests passing; typecheck clean.
 
 **Commit(s):** _to be added_
+
+---
+
+## 4. Step 2: database
+
+**Prompt**
+
+```text
+Follow CLAUDE.md and docs/PLAN.md. Implement Step 2 (database) only. No repositories, services or API yet.
+
+* Add the models from the PLAN.md data model to schema.prisma: countries, component_types, employees, salary_components, salary_history, users, sessions. Use the PostgreSQL types from the plan (citext, date, timestamptz, numeric(18,8), jsonb, enums).
+* Create the first migration with prisma migrate dev. Add raw SQL in the migration for what Prisma can't express:
+  * the citext extension;
+  * CHECK constraints: annual_amount between 1 and 100,000,000 (matching the validators), users.id = 1, left_on set only when status = 'left', previous components and total null only for new_hire;
+  * triggers that reject UPDATE and DELETE on salary_history.
+* Insert the five component types (from the validators' catalogue) in the migration, since they are fixed reference data. Countries come later with the seed.
+* Employees can never be deleted while salary rows reference them (no cascading deletes).
+* Test helper: apply migrations to the test database once before the tests, and empty the tables between tests (keeping the component types).
+* Tests first, against the real test database:
+  * history UPDATE and DELETE are rejected;
+  * a second user is rejected;
+  * an unknown country is rejected;
+  * an amount of 0 or above the limit is rejected;
+  * an unknown component code is rejected;
+  * the same email in different case is rejected;
+  * left_on without status 'left' is rejected;
+  * a new_hire entry with previous components, or a change without them, is rejected.
+* Run the tests and typecheck and show me the results.
+* Don't commit. I will commit myself.
+```
+
+**Outcome:** Seven Prisma models and the first migration (`20261118111659_init`) with raw SQL for `citext`, four named CHECK constraints, the append-only trigger on `salary_history`, and the five component types. No cascading deletes of employees, salaries or history. Test helper migrates the test database once and empties it between tests; test files run sequentially. 24 constraint tests written first and seen failing, then 101/101 backend tests passing; typecheck clean. Found that Prisma 7's `migrate dev` no longer regenerates the client, so `db:migrate` now runs `prisma generate` too.
+
+**Commit(s):** _to be added_

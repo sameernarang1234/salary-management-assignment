@@ -21,6 +21,17 @@ export async function insertCountry(code = 'IN') {
   });
 }
 
+/** India, the United Kingdom and the United States, with fixed test rates. */
+export async function insertTestCountries() {
+  await testPrisma.country.createMany({
+    data: [
+      { code: 'IN', name: 'India', currency: 'INR', usdPerUnit: '0.012' },
+      { code: 'GB', name: 'United Kingdom', currency: 'GBP', usdPerUnit: '1.27' },
+      { code: 'US', name: 'United States', currency: 'USD', usdPerUnit: '1' },
+    ],
+  });
+}
+
 export async function insertEmployee(overrides: Partial<Prisma.EmployeeUncheckedCreateInput> = {}) {
   return testPrisma.employee.create({
     data: {
