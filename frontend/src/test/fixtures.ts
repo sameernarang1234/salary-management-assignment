@@ -1,4 +1,10 @@
-import type { EmployeeSummary, Meta, Page } from '../api/types';
+import type {
+  EmployeeDetails,
+  EmployeeSummary,
+  Meta,
+  Page,
+  SalaryHistoryEntry,
+} from '../api/types';
 
 export const testMeta: Meta = {
   countries: [
@@ -51,6 +57,41 @@ export const john: EmployeeSummary = {
   totalSalary: 120_000,
   totalSalaryUsd: 120_000,
 };
+
+export const ashaDetails: EmployeeDetails = {
+  ...asha,
+  countryName: 'India',
+  usdPerUnit: '0.012',
+  salaryComponents: [
+    { code: 'BASIC', annualAmount: 1_200_000 },
+    { code: 'HRA', annualAmount: 480_000 },
+  ],
+};
+
+export const ashaHistory: SalaryHistoryEntry[] = [
+  {
+    id: 2,
+    employeeId: 1,
+    effectiveDate: '2025-04-01',
+    reason: 'promotion',
+    previousComponents: [{ code: 'BASIC', annualAmount: 1_400_000 }],
+    previousTotal: 1_400_000,
+    newComponents: ashaDetails.salaryComponents,
+    newTotal: 1_680_000,
+    recordedAt: '2025-03-20T10:15:00.000Z',
+  },
+  {
+    id: 1,
+    employeeId: 1,
+    effectiveDate: '2023-04-01',
+    reason: 'new_hire',
+    previousComponents: null,
+    previousTotal: null,
+    newComponents: [{ code: 'BASIC', annualAmount: 1_400_000 }],
+    newTotal: 1_400_000,
+    recordedAt: '2023-03-25T09:00:00.000Z',
+  },
+];
 
 export function pageOf(
   items: EmployeeSummary[],

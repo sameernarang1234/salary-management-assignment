@@ -1,4 +1,5 @@
 import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded';
+import PersonAddRoundedIcon from '@mui/icons-material/PersonAddRounded';
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import {
   Box,
@@ -17,7 +18,7 @@ import {
   useTheme,
 } from '@mui/material';
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { useGetMetaQuery, useListEmployeesQuery } from '../../api/api';
 import type { EmployeeSortField } from '../../api/types';
 import { PageHeader } from '../../components/PageHeader';
@@ -34,6 +35,7 @@ import {
   updateQuery,
   type DirectoryQuery,
 } from './directoryQuery';
+import { EmployeeFormDialog } from './EmployeeFormDialog';
 import { EmployeeCards, EmployeeTable } from './EmployeeList';
 
 /** Sort choices for phones, where there are no column headers to click. */
@@ -53,6 +55,8 @@ export function EmployeesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const query = fromSearchParams(searchParams);
 
+  const navigate = useNavigate();
+  const [adding, setAdding] = useState(false);
   const [searchText, setSearchText] = useState(query.search ?? '');
   const debouncedSearch = useDebouncedValue(searchText.trim());
 
@@ -100,16 +104,33 @@ export function EmployeesPage() {
         title="Employees"
         description="Find any employee, see their salary and keep records up to date. Salaries are in each employee's local currency, with a USD equivalent."
         actions={
-          <Button
-            variant="outlined"
-            startIcon={<DownloadRoundedIcon />}
-            href={exportHref(query)}
-            download
-          >
-            Export CSV
-          </Button>
+          <>
+            <Button
+              variant="outlined"
+              startIcon={<DownloadRoundedIcon />}
+              href={exportHref(query)}
+              download
+            >
+              Export CSV
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<PersonAddRoundedIcon />}
+              onClick={() => setAdding(true)}
+              disabled={!meta.data}
+            >
+              Add employee
+            </Button>
+          </>
         }
       />
+      {adding && (
+        <EmployeeFormDialog
+          mode="create"
+          onClose={() => setAdding(false)}
+          onCreated={(employee) => navigate(`/employees/${employee.id}`)}
+        />
+      )}
 
       <Card sx={{ mb: 3 }}>
         <CardContent sx={{ p: { xs: 2.5, md: 3 }, '&:last-child': { pb: { xs: 2.5, md: 3 } } }}>

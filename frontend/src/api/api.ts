@@ -9,10 +9,15 @@ import { notify } from '../features/notifications/notificationsSlice';
 import { sessionExpired } from '../features/session/sessionActions';
 import type {
   Credentials,
+  EmployeeDetails,
+  EmployeeInput,
   EmployeeListParams,
   EmployeeSummary,
   Meta,
+  NewEmployeeInput,
   Page,
+  SalaryChangeInput,
+  SalaryHistoryEntry,
   SignedInUser,
 } from './types';
 
@@ -45,7 +50,7 @@ const baseQuery: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError> =
 export const api = createApi({
   reducerPath: 'api',
   baseQuery,
-  tagTypes: ['Meta', 'Employees'],
+  tagTypes: ['Meta', 'Employees', 'Employee', 'History', 'Insights'],
   endpoints: (build) => ({
     getMe: build.query<SignedInUser, void>({
       query: () => 'auth/me',
@@ -66,6 +71,52 @@ export const api = createApi({
       query: (params) => ({ url: 'employees', params }),
       providesTags: ['Employees'],
     }),
+    getEmployee: build.query<EmployeeDetails, number>({
+      query: (id) => `employees/${id}`,
+      providesTags: (_result, _error, id) => [{ type: 'Employee', id }],
+    }),
+    getSalaryHistory: build.query<SalaryHistoryEntry[], number>({
+      query: (id) => `employees/${id}/history`,
+      transformResponse: (response: { items: SalaryHistoryEntry[] }) => response.items,
+      providesTags: (_result, _error, id) => [{ type: 'History', id }],
+    }),
+
+    // Each change refreshes exactly the cached data it affects.
+    createEmployee: build.mutation<EmployeeDetails, NewEmployeeInput>({
+      query: (body) => ({ url: 'employees', method: 'POST', body }),
+      invalidatesTags: ['Employees', 'Insights', 'Meta'],
+    }),
+    updateEmployee: build.mutation<EmployeeDetails, { id: number; details: EmployeeInput }>({
+      query: ({ id, details }) => ({ url: `employees/${id}`, method: 'PUT', body: details }),
+      invalidatesTags: (_result, _error, { id }) => [
+        { type: 'Employee', id },
+        'Employees',
+        'Insights',
+        'Meta',
+      ],
+    }),
+    changeSalary: build.mutation<unknown, { id: number; change: SalaryChangeInput }>({
+      query: ({ id, change }) => ({ url: `employees/${id}/salary`, method: 'POST', body: change }),
+      invalidatesTags: (_result, _error, { id }) => [
+        { type: 'Employee', id },
+        { type: 'History', id },
+        'Employees',
+        'Insights',
+      ],
+    }),
+    markEmployeeLeft: build.mutation<unknown, { id: number; leftOn: string }>({
+      query: ({ id, leftOn }) => ({
+        url: `employees/${id}/leave`,
+        method: 'POST',
+        body: { leftOn },
+      }),
+      invalidatesTags: (_result, _error, { id }) => [
+        { type: 'Employee', id },
+        'Employees',
+        'Insights',
+        'Meta',
+      ],
+    }),
   }),
 });
 
@@ -75,4 +126,10 @@ export const {
   useLogoutMutation,
   useGetMetaQuery,
   useListEmployeesQuery,
+  useGetEmployeeQuery,
+  useGetSalaryHistoryQuery,
+  useCreateEmployeeMutation,
+  useUpdateEmployeeMutation,
+  useChangeSalaryMutation,
+  useMarkEmployeeLeftMutation,
 } = api;

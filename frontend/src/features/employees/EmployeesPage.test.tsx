@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { Route, Routes, useLocation } from 'react-router';
 import { asha, john, pageOf } from '../../test/fixtures';
@@ -179,6 +179,59 @@ describe('<EmployeesPage />', () => {
     await user.click(screen.getByRole('button', { name: 'Retry' }));
 
     expect(await screen.findByRole('link', { name: 'Asha Verma' })).toBeInTheDocument();
+  });
+
+  it('adds an employee with their first salary and opens their page', async () => {
+    recordDirectoryRequests();
+    let body: unknown;
+    server.use(
+      http.post('/api/employees', async ({ request }) => {
+        body = await request.json();
+        return HttpResponse.json({ ...asha, id: 42 }, { status: 201 });
+      }),
+    );
+    const { user } = renderPage();
+
+    await user.click(await screen.findByRole('button', { name: 'Add employee' }));
+    const form = await screen.findByRole('dialog');
+    await user.type(within(form).getByLabelText('Full name'), 'Meera Nair');
+    await user.type(within(form).getByLabelText('Email'), 'meera.nair@acme.example');
+    await user.type(within(form).getByLabelText('Job title'), 'Data Analyst');
+    await user.type(within(form).getByLabelText('Department'), 'Data');
+    await user.click(within(form).getByRole('combobox', { name: 'Country' }));
+    await user.click(await screen.findByRole('option', { name: 'India' }));
+    fireEvent.change(within(form).getByLabelText('Hire date'), { target: { value: '2026-01-05' } });
+    await user.type(within(form).getByLabelText('Basic'), '900000');
+    await user.type(within(form).getByLabelText('House Rent Allowance'), '360000');
+    expect(within(form).getByText('Total: ₹12,60,000 a year')).toBeInTheDocument();
+    await user.click(within(form).getByRole('button', { name: 'Add employee' }));
+
+    expect(await screen.findByRole('heading', { name: 'Details page' })).toBeInTheDocument();
+    expect(body).toEqual({
+      fullName: 'Meera Nair',
+      email: 'meera.nair@acme.example',
+      jobTitle: 'Data Analyst',
+      department: 'Data',
+      countryCode: 'IN',
+      hireDate: '2026-01-05',
+      components: [
+        { code: 'BASIC', annualAmount: 900_000 },
+        { code: 'HRA', annualAmount: 360_000 },
+      ],
+    });
+  });
+
+  it('checks the new employee form before sending', async () => {
+    recordDirectoryRequests();
+    const { user } = renderPage();
+
+    await user.click(await screen.findByRole('button', { name: 'Add employee' }));
+    const form = await screen.findByRole('dialog');
+    await user.click(within(form).getByRole('button', { name: 'Add employee' }));
+
+    expect(within(form).getByLabelText('Full name')).toHaveAccessibleDescription('Required');
+    expect(within(form).getByText('Choose a country')).toBeInTheDocument();
+    expect(within(form).getByText('Basic is required')).toBeInTheDocument();
   });
 
   it('shows cards instead of a table on a phone', async () => {

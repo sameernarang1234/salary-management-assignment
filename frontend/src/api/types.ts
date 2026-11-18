@@ -76,6 +76,52 @@ export interface EmployeeListParams {
   includeLeft?: 'true';
 }
 
+export interface SalaryComponent {
+  code: SalaryComponentCode;
+  annualAmount: number;
+}
+
+/** Everything the employee details page needs. */
+export interface EmployeeDetails extends Omit<EmployeeSummary, 'totalSalaryUsd'> {
+  countryName: string;
+  usdPerUnit: string;
+  salaryComponents: SalaryComponent[];
+  totalSalaryUsd?: number;
+}
+
+export type SalaryHistoryReason = 'new_hire' | SalaryChangeReason;
+
+export interface SalaryHistoryEntry {
+  id: number;
+  employeeId: number;
+  effectiveDate: string;
+  reason: SalaryHistoryReason;
+  previousComponents: SalaryComponent[] | null;
+  previousTotal: number | null;
+  newComponents: SalaryComponent[];
+  newTotal: number;
+  recordedAt: string;
+}
+
+export interface EmployeeInput {
+  fullName: string;
+  email: string;
+  jobTitle: string;
+  department: string;
+  countryCode: string;
+  hireDate: string;
+}
+
+export interface NewEmployeeInput extends EmployeeInput {
+  components: SalaryComponent[];
+}
+
+export interface SalaryChangeInput {
+  components: SalaryComponent[];
+  effectiveDate: string;
+  reason: SalaryChangeReason;
+}
+
 /** The backend's one error format. */
 export interface ApiErrorBody {
   error: { code: string; message: string; fields?: Record<string, string> };

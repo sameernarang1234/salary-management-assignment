@@ -14,7 +14,8 @@ export function renderWithProviders(
 ) {
   return {
     store,
-    user: userEvent.setup(),
+    // No pause between keystrokes: same events, much faster on slow machines.
+    user: userEvent.setup({ delay: null }),
     ...render(
       <Provider store={store}>
         <ThemeProvider theme={theme}>
