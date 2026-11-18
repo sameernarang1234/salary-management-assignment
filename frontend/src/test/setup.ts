@@ -1,5 +1,9 @@
 import '@testing-library/jest-dom/vitest';
+import { configure } from '@testing-library/react';
 import { server } from './server';
+
+// findBy/waitFor wait up to 5 s (default 1 s): MUI pages render slowly in jsdom.
+configure({ asyncUtilTimeout: 5_000 });
 
 /**
  * jsdom has no matchMedia, so MUI's useMediaQuery would always report a phone. This evaluates

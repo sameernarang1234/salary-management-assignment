@@ -7,7 +7,14 @@ import {
 } from '@reduxjs/toolkit/query/react';
 import { notify } from '../features/notifications/notificationsSlice';
 import { sessionExpired } from '../features/session/sessionActions';
-import type { Credentials, Meta, SignedInUser } from './types';
+import type {
+  Credentials,
+  EmployeeListParams,
+  EmployeeSummary,
+  Meta,
+  Page,
+  SignedInUser,
+} from './types';
 
 const rawBaseQuery = fetchBaseQuery({
   // Absolute so the same code works in the browser and in tests; same origin as the app.
@@ -38,7 +45,7 @@ const baseQuery: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError> =
 export const api = createApi({
   reducerPath: 'api',
   baseQuery,
-  tagTypes: ['Meta'],
+  tagTypes: ['Meta', 'Employees'],
   endpoints: (build) => ({
     getMe: build.query<SignedInUser, void>({
       query: () => 'auth/me',
@@ -55,7 +62,17 @@ export const api = createApi({
       query: () => 'meta',
       providesTags: ['Meta'],
     }),
+    listEmployees: build.query<Page<EmployeeSummary>, EmployeeListParams>({
+      query: (params) => ({ url: 'employees', params }),
+      providesTags: ['Employees'],
+    }),
   }),
 });
 
-export const { useGetMeQuery, useLoginMutation, useLogoutMutation, useGetMetaQuery } = api;
+export const {
+  useGetMeQuery,
+  useLoginMutation,
+  useLogoutMutation,
+  useGetMetaQuery,
+  useListEmployeesQuery,
+} = api;

@@ -38,6 +38,44 @@ export interface Meta {
   ratesAsOf: string;
 }
 
+export type EmployeeStatus = 'active' | 'left';
+
+/** A row in the directory. */
+export interface EmployeeSummary {
+  id: number;
+  fullName: string;
+  email: string;
+  jobTitle: string;
+  department: string;
+  countryCode: string;
+  hireDate: string;
+  status: EmployeeStatus;
+  leftOn: string | null;
+  currency: string;
+  totalSalary: number;
+  totalSalaryUsd: number;
+}
+
+export interface Page<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/** Query parameters of GET /api/employees. */
+export interface EmployeeListParams {
+  search?: string;
+  country?: string;
+  department?: string;
+  jobTitle?: string;
+  sort?: EmployeeSortField;
+  order?: 'asc' | 'desc';
+  page?: number;
+  pageSize?: number;
+  includeLeft?: 'true';
+}
+
 /** The backend's one error format. */
 export interface ApiErrorBody {
   error: { code: string; message: string; fields?: Record<string, string> };

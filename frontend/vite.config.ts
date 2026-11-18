@@ -14,5 +14,7 @@ export default defineConfig({
     globals: true,
     setupFiles: ['src/test/setup.ts'],
     css: false,
+    // MUI components render slowly in jsdom, especially on loaded machines and CI runners.
+    testTimeout: 20_000,
   },
 });

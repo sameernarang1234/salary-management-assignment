@@ -1,5 +1,6 @@
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
+import { testMeta } from './fixtures';
 
 export const HR_MANAGER = { email: 'hr.manager@acme.example' };
 
@@ -13,4 +14,5 @@ export const unauthenticated = () =>
 export const server = setupServer(
   http.get('/api/auth/me', () => HttpResponse.json({ user: HR_MANAGER })),
   http.post('/api/auth/logout', () => new HttpResponse(null, { status: 204 })),
+  http.get('/api/meta', () => HttpResponse.json(testMeta)),
 );
