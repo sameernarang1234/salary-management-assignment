@@ -37,6 +37,14 @@ Object.defineProperty(window, 'matchMedia', {
   }),
 });
 
+// jsdom has no ResizeObserver; Recharts' ResponsiveContainer needs one (charts draw at 0×0 in tests,
+// which is fine: the tests read the accessible tables behind each chart).
+globalThis.ResizeObserver ??= class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
+
 // Mock the API at the network boundary: unhandled requests fail the test.
 beforeAll(() => server.listen({ onUnhandledFrame: 'error' }));
 afterEach(() => server.resetHandlers());

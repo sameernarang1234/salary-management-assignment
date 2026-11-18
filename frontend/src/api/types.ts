@@ -122,6 +122,56 @@ export interface SalaryChangeInput {
   reason: SalaryChangeReason;
 }
 
+export interface SalaryBand {
+  label: string;
+  minUsd: number;
+  /** null for the top band */
+  maxUsd: number | null;
+  headcount: number;
+}
+
+export interface InsightsOverview {
+  headcount: number;
+  totalPayrollUsd: number;
+  /** null when there are no active employees */
+  medianSalaryUsd: number | null;
+  salaryDistribution: SalaryBand[];
+}
+
+export interface PayStats {
+  headcount: number;
+  min: number;
+  median: number;
+  average: number;
+  max: number;
+}
+
+export interface CountryPay extends PayStats {
+  countryCode: string;
+  countryName: string;
+  currency: string;
+  averageUsd: number;
+  totalUsd: number;
+}
+
+export interface JobTitlePay extends PayStats {
+  jobTitle: string;
+}
+
+export interface CountryJobTitlePay {
+  countryCode: string;
+  countryName: string;
+  currency: string;
+  jobTitles: JobTitlePay[];
+}
+
+export interface DepartmentCost {
+  department: string;
+  headcount: number;
+  totalUsd: number;
+  averageUsd: number;
+}
+
 /** The backend's one error format. */
 export interface ApiErrorBody {
   error: { code: string; message: string; fields?: Record<string, string> };

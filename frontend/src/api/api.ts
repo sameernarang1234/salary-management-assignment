@@ -8,8 +8,12 @@ import {
 import { notify } from '../features/notifications/notificationsSlice';
 import { sessionExpired } from '../features/session/sessionActions';
 import type {
+  CountryJobTitlePay,
+  CountryPay,
   Credentials,
+  DepartmentCost,
   EmployeeDetails,
+  InsightsOverview,
   EmployeeInput,
   EmployeeListParams,
   EmployeeSummary,
@@ -81,6 +85,25 @@ export const api = createApi({
       providesTags: (_result, _error, id) => [{ type: 'History', id }],
     }),
 
+    getInsightsOverview: build.query<InsightsOverview, void>({
+      query: () => 'insights/overview',
+      providesTags: ['Insights'],
+    }),
+    getPayByCountry: build.query<CountryPay[], void>({
+      query: () => 'insights/countries',
+      transformResponse: (response: { items: CountryPay[] }) => response.items,
+      providesTags: ['Insights'],
+    }),
+    getPayByJobTitle: build.query<CountryJobTitlePay, string>({
+      query: (countryCode) => `insights/countries/${encodeURIComponent(countryCode)}/job-titles`,
+      providesTags: ['Insights'],
+    }),
+    getCostByDepartment: build.query<DepartmentCost[], void>({
+      query: () => 'insights/departments',
+      transformResponse: (response: { items: DepartmentCost[] }) => response.items,
+      providesTags: ['Insights'],
+    }),
+
     // Each change refreshes exactly the cached data it affects.
     createEmployee: build.mutation<EmployeeDetails, NewEmployeeInput>({
       query: (body) => ({ url: 'employees', method: 'POST', body }),
@@ -132,4 +155,8 @@ export const {
   useUpdateEmployeeMutation,
   useChangeSalaryMutation,
   useMarkEmployeeLeftMutation,
+  useGetInsightsOverviewQuery,
+  useGetPayByCountryQuery,
+  useGetPayByJobTitleQuery,
+  useGetCostByDepartmentQuery,
 } = api;
