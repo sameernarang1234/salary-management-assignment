@@ -157,6 +157,17 @@ export async function listEmployees(
   };
 }
 
+/**
+ * Locks an employee's row until the surrounding transaction ends, so concurrent salary changes
+ * run one after another. Returns false if there is no such employee. Call inside a transaction.
+ */
+export async function lockEmployee(db: Db, id: number): Promise<boolean> {
+  const rows = await db.$queryRaw<{ id: number }[]>`
+    SELECT id FROM employees WHERE id = ${id} FOR UPDATE
+  `;
+  return rows.length > 0;
+}
+
 export async function findEmployeeById(db: Db, id: number): Promise<EmployeeDetails | null> {
   const row = await db.employee.findUnique({
     where: { id },

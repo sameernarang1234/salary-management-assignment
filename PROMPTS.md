@@ -110,3 +110,42 @@ Follow CLAUDE.md and docs/PLAN.md. Implement Step 2 (database) only. No reposito
 **Outcome:** Seven Prisma models and the first migration (`20261118111659_init`) with raw SQL for `citext`, four named CHECK constraints, the append-only trigger on `salary_history`, and the five component types. No cascading deletes of employees, salaries or history. Test helper migrates the test database once and empties it between tests; test files run sequentially. 24 constraint tests written first and seen failing, then 101/101 backend tests passing; typecheck clean. Found that Prisma 7's `migrate dev` no longer regenerates the client, so `db:migrate` now runs `prisma generate` too.
 
 **Commit(s):** _to be added_
+
+---
+
+## 5. Step 3: repositories
+
+**Prompt**
+
+```text
+Follow CLAUDE.md and docs/PLAN.md. Implement Step 3 (repositories) only, in backend/src/repositories. No services, no HTTP yet.
+
+* Each repository takes the Prisma client (or a transaction client), so services can later combine calls in one transaction.
+* Repositories return plain TypeScript types, not Prisma models: dates as YYYY-MM-DD strings, USD rates as decimal strings, and salary components in the validators' shape.
+* employees:
+  * find by id, with current salary components, total, and the country's currency;
+  * list with search (name or email, case-insensitive, partial), filters (country, department, job title), sort (name, job title, department, country, hire date; ascending or descending, with id as a tie-breaker), and page/page size. Return the items and the total count. Leavers are excluded unless asked for;
+  * insert, update details, mark as left (status and left_on);
+  * a duplicate email raises a clear "email already in use" error, not a raw Prisma error.
+* salary components: get for an employee, replace all for an employee.
+* salary history: append an entry, list an employee's entries newest first.
+* countries: list all, find by code.
+* filter options: distinct departments and job titles of active employees.
+* Tests first, against the test database:
+  * search matches part of a name or email in any case;
+  * % and _ in the search are treated as literal characters;
+  * SQL injection text in search or filters returns no rows and causes no error;
+  * filters combine;
+  * each sort order works, and ties are ordered by id;
+  * a page beyond the end returns no items but the correct total;
+  * leavers are hidden by default and shown when asked;
+  * a duplicate email in different case gives the "email already in use" error;
+  * replacing components removes old ones;
+  * history comes back newest first.
+* Run the tests and typecheck and show me the results.
+* Don't commit. I will commit myself.
+```
+
+**Outcome:** Repositories for employees (directory list with escaped search, filters, allow-listed sorting with id tie-breaker, paging; find by id; insert, update, mark as left), salary components (atomic replace, catalogue order), salary history (append, newest first, snapshots re-validated on read), countries and filter options. `EmailInUseError` replaces raw Prisma errors; `inTransaction` lets services join one transaction. Tests showed Prisma does not escape `%`/`_` in `contains`, so the repository escapes them. 54 tests written first and seen failing, then 155/155 backend tests passing; typecheck clean.
+
+**Commit(s):** _to be added_
