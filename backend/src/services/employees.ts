@@ -17,7 +17,7 @@ import { isoDateSchema } from '../validators/dates.js';
 import { employeeInputSchema } from '../validators/employee.js';
 import { salaryChangeSchema } from '../validators/salaryChange.js';
 import { salaryComponentsSchema, salaryTotal } from '../validators/salaryComponents.js';
-import type { Clock } from './clock.js';
+import { parse, type ServiceContext } from './context.js';
 import {
   DuplicateEmailError,
   EmployeeLeftError,
@@ -25,21 +25,10 @@ import {
   ValidationError,
 } from './errors.js';
 
-export interface ServiceContext {
-  db: Db;
-  clock: Clock;
-}
+export type { ServiceContext } from './context.js';
 
 const newEmployeeSchema = employeeInputSchema.extend({ components: salaryComponentsSchema });
 const leavingSchema = z.object({ leftOn: isoDateSchema });
-
-function parse<Schema extends z.ZodType>(schema: Schema, input: unknown): z.output<Schema> {
-  const result = schema.safeParse(input);
-  if (!result.success) {
-    throw ValidationError.fromZod(result.error);
-  }
-  return result.data;
-}
 
 /** Rejects a date after today or before the hire date, reporting it on `field`. */
 function checkDate(

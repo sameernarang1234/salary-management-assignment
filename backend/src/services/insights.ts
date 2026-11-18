@@ -10,7 +10,7 @@ import {
   type JobTitlePay,
   type PayrollSummary,
 } from '../repositories/insights.js';
-import type { ServiceContext } from './employees.js';
+import type { ServiceContext } from './context.js';
 import { ValidationError } from './errors.js';
 
 export interface SalaryBand {

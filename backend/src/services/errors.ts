@@ -44,6 +44,16 @@ export class DuplicateEmailError extends ServiceError {
   }
 }
 
+/** Same error for an unknown email and a wrong password, so emails can't be discovered. */
+export class InvalidCredentialsError extends ServiceError {
+  readonly code = 'INVALID_CREDENTIALS';
+
+  constructor() {
+    super('Incorrect email or password');
+    this.name = 'InvalidCredentialsError';
+  }
+}
+
 export class EmployeeLeftError extends ServiceError {
   readonly code = 'EMPLOYEE_LEFT';
 
