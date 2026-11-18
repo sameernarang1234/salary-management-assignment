@@ -36,15 +36,15 @@ erDiagram
   USERS ||--o{ SESSIONS : "signs in with"
 
   COUNTRIES {
-    text code PK "ISO 3166 alpha-2, e.g. IN"
+    char code PK "ISO 3166 alpha-2, e.g. IN"
     text name
-    text currency "ISO 4217, e.g. INR"
+    char currency "ISO 4217, e.g. INR"
     decimal usd_per_unit "static reference rate, numeric(18,8)"
   }
   COMPONENT_TYPES {
     text code PK "BASIC, HRA, HOUSING, TRANSPORT, SPECIAL"
     text name
-    int is_required "1 only for BASIC"
+    boolean is_required "true only for BASIC"
   }
   EMPLOYEES {
     int id PK
@@ -52,7 +52,7 @@ erDiagram
     citext email UK "case-insensitive"
     text job_title
     text department
-    text country FK
+    char country_code FK
     date hire_date
     enum status "active | left"
     date left_on "nullable"
@@ -90,11 +90,11 @@ erDiagram
 
 Notes on the model:
 
-- **The schema lives in `backend/prisma/schema.prisma`**; every change is a Prisma migration committed to the repo. Rules Prisma's schema language can't express are added as raw SQL in the migration files: `CHECK` constraints (`annual_amount > 0`, `users.id = 1`, `left_on` set only when `status = 'left'`), the append-only triggers, and the `citext` extension.
+- **The schema lives in `backend/prisma/schema.prisma`**; every change is a Prisma migration committed to the repo. Rules Prisma's schema language can't express are added as raw SQL in the migration files: `CHECK` constraints (`annual_amount` between 1 and 100,000,000, `users.id = 1`, `left_on` set if and only if `status = 'left'`, previous components and total null only for `new_hire`), the append-only triggers, the `citext` extension, and the five fixed component types. Foreign keys never cascade deletes to employees, salaries or history.
 - **Current salary = the rows in `salary_components`** for an employee; **total = their sum** (computed in SQL, never stored, so it can't drift).
 - **Currency is not stored on the employee.** It comes from `countries`, so an employee in India can't be "paid in EUR" by mistake.
 - **USD figures are computed** as `ROUND(total × usd_per_unit)`, using the dated rate. The rates date is shown in the UI.
-- **Salary history is append-only**: PostgreSQL triggers raise an error on any `UPDATE` or `DELETE` of `salary_history`, so the rule holds even if application code (or someone in a SQL console) gets it wrong. Old and new components are stored as `jsonb` snapshots, so an entry stays readable even if the component catalogue changes later.
+- **Salary history is append-only**: PostgreSQL triggers raise an error on any `UPDATE` or `DELETE` of `salary_history`, so the rule holds even if application code (or someone in a SQL console) gets it wrong. `TRUNCATE` skips row triggers; the application never truncates, and in production its database role should not have the `TRUNCATE` privilege. Old and new components are stored as `jsonb` snapshots, so an entry stays readable even if the component catalogue changes later.
 - **Creating an employee writes the first history entry** (`new_hire`), so every employee's history starts at their first salary.
 - **Mark as left** sets `status = 'left'` and `left_on`; rows are never deleted. Directory, insights and CSV export only include `active` employees by default.
 - **One account** is enforced by `CHECK (id = 1)` on `users`; the seed script creates it from environment variables. There is no sign-up endpoint.

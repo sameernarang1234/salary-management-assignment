@@ -1,4 +1,7 @@
-// Database schema. Models are added in Step 2 of docs/PLAN.md, each with a migration.
+// Database schema (see docs/PLAN.md, "Data model").
+// Rules Prisma's schema language can't express are raw SQL in the migrations:
+// the citext extension, CHECK constraints, the append-only triggers on salary_history,
+// and the fixed component catalogue.
 
 generator client {
   provider = "prisma-client"
@@ -7,4 +10,115 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+enum EmployeeStatus {
+  active
+  left
+
+  @@map("employee_status")
+}
+
+enum SalaryChangeReason {
+  new_hire
+  annual_increment
+  promotion
+  correction
+  other
+
+  @@map("salary_change_reason")
+}
+
+/// Countries with their currency and a static, dated USD reference rate.
+model Country {
+  code       String     @id @db.Char(2) /// ISO 3166-1 alpha-2, e.g. IN
+  name       String
+  currency   String     @db.Char(3) /// ISO 4217, e.g. INR
+  usdPerUnit Decimal    @map("usd_per_unit") @db.Decimal(18, 8)
+  employees  Employee[]
+
+  @@map("countries")
+}
+
+/// The fixed salary component catalogue; filled by the first migration.
+model ComponentType {
+  code             String            @id
+  name             String
+  isRequired       Boolean           @default(false) @map("is_required")
+  salaryComponents SalaryComponent[]
+
+  @@map("component_types")
+}
+
+model Employee {
+  id               Int                  @id @default(autoincrement())
+  fullName         String               @map("full_name")
+  email            String               @unique @db.Citext
+  jobTitle         String               @map("job_title")
+  department       String
+  countryCode      String               @map("country_code") @db.Char(2)
+  hireDate         DateTime             @map("hire_date") @db.Date
+  status           EmployeeStatus       @default(active)
+  leftOn           DateTime?            @map("left_on") @db.Date
+  createdAt        DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime             @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  country          Country              @relation(fields: [countryCode], references: [code], onDelete: Restrict, onUpdate: Restrict)
+  salaryComponents SalaryComponent[]
+  salaryHistory    SalaryHistoryEntry[]
+
+  @@index([status, countryCode, jobTitle])
+  @@index([department])
+  @@index([fullName])
+  @@map("employees")
+}
+
+/// An employee's current salary: one row per component. Total = sum of annual_amount.
+model SalaryComponent {
+  employeeId    Int           @map("employee_id")
+  componentCode String        @map("component_code")
+  annualAmount  Int           @map("annual_amount") /// whole local currency units
+  employee      Employee      @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  componentType ComponentType @relation(fields: [componentCode], references: [code], onDelete: Restrict)
+
+  @@id([employeeId, componentCode])
+  @@map("salary_components")
+}
+
+/// Append-only: triggers reject UPDATE and DELETE.
+model SalaryHistoryEntry {
+  id                 Int                @id @default(autoincrement())
+  employeeId         Int                @map("employee_id")
+  effectiveDate      DateTime           @map("effective_date") @db.Date
+  reason             SalaryChangeReason
+  previousComponents Json?              @map("previous_components") @db.JsonB /// null only for new_hire
+  newComponents      Json               @map("new_components") @db.JsonB
+  previousTotal      Int?               @map("previous_total") /// null only for new_hire
+  newTotal           Int                @map("new_total")
+  recordedAt         DateTime           @default(now()) @map("recorded_at") @db.Timestamptz(3)
+  employee           Employee           @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+
+  @@index([employeeId, effectiveDate])
+  @@map("salary_history")
+}
+
+/// The single HR Manager account (CHECK id = 1).
+model User {
+  id           Int       @id @default(1)
+  email        String    @unique @db.Citext
+  passwordHash String    @map("password_hash") /// scrypt, with salt
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  sessions     Session[]
+
+  @@map("users")
+}
+
+/// Server-side sessions; only the SHA-256 hash of the cookie token is stored.
+model Session {
+  tokenHash String   @id @map("token_hash")
+  userId    Int      @map("user_id")
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(3)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
 }

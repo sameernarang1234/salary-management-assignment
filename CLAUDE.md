@@ -60,7 +60,8 @@ Claude Code loads this file at the start of every session. These rules apply to 
 ## Commands
 
 - `docker compose up -d` (PostgreSQL) · `npm install` · `npm run db:migrate` · `npm run seed` · `npm test` · `npm run typecheck`
-- After editing `schema.prisma`: create a migration, then `npx prisma generate` runs as part of it.
+- After editing `schema.prisma`: `npm run db:migrate -w backend` (Prisma 7's `migrate dev` does not regenerate the client, so the script runs `prisma generate` after it). To add raw SQL, create the migration with `npx prisma migrate dev --create-only --name <change>`, edit it, then run `db:migrate`.
+- Tests apply pending migrations to the test database automatically (`test/global-setup.ts`).
 - Backend only: `npm test -w backend` · Frontend only: `npm test -w frontend`
 
 ## Review checklist for every AI-generated change
