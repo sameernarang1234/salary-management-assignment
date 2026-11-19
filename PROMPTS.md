@@ -479,3 +479,17 @@ In the insights page, in the bar graphs, add x axis and y axis labels, indicatin
 **Outcome:** Axis titles on both bar charts: the salary distribution ("Salary range (USD per year)" across, "Number of employees" up) and cost by department ("Total annual cost (USD)" across, "Department" up). Tests written first and seen failing; they give Recharts a fixed size in jsdom so the real chart renders. A browser check measured every title against every tick label: no overlaps at 1280 px, but at phone width the department title was clipped and the salary ranges ran into each other. On phones, the department column now narrows and the salary ranges tilt more steeply in a smaller font. 110/110 frontend tests passing; typecheck and build clean.
 
 **Commit(s):** _to be added_
+
+---
+
+## 18. Insights page: no horizontal scrolling
+
+**Prompt**
+
+```text
+Now the employees page is fine, since there is no horizontal scroll, and everything fits well in the viewport. But insights page has a horizontal scroll. Remove it, and keep everything within the viewport.
+```
+
+**Outcome:** Measured in the browser first. The cause was the hidden screen-reader table behind the distribution chart: its `width: 1` meant 100% in MUI's `sx`, so it was 1,265 px wide and stuck out past the screen. It's now `'1px'`, with a test on its computed size. Three tables also scrolled sideways inside their cards. Pay by country and Pay by job title merged min and max into one Range column, with tighter cell padding, and show one card per row below 1200 px. Cost by department's table moved under its chart, and shows cards on phones. Checked at 1280, 1200, 1024, 768 and 375 px: no sideways scrolling, and no table or card wider than its space. Tests written first and seen failing, then 114/114 frontend tests passing; typecheck and build clean.
+
+**Commit(s):** _to be added_
