@@ -10,6 +10,8 @@ import {
   TableRow,
   TextField,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import { useState } from 'react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -27,26 +29,58 @@ import { palette } from '../../theme';
 
 const numberCell = { whiteSpace: 'nowrap' } as const;
 
+/** Phones get tighter charts: smaller tick labels and narrower label columns. */
+function useIsNarrow(): boolean {
+  const theme = useTheme();
+  return useMediaQuery(theme.breakpoints.down('sm'));
+}
+
+/** Shared look for chart axis titles ("Number of employees", "Department", …). */
+const AXIS_TITLE = {
+  fill: palette.muted,
+  fontSize: 13,
+  style: { fontWeight: 600 },
+} as const;
+
 /** "How do we pay people?": headcount per USD salary band. */
 export function DistributionSection({ bands }: { bands: SalaryBand[] }) {
+  const isNarrow = useIsNarrow();
   return (
     <SectionCard
       title="Salary distribution"
       subtitle="Active employees by total annual salary, converted to USD"
     >
-      <Box aria-hidden sx={{ height: 280 }}>
+      <Box aria-hidden sx={{ height: isNarrow ? 360 : 320 }}>
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={bands} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
+          <BarChart data={bands} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
             <CartesianGrid strokeDasharray="3 3" stroke={palette.line} vertical={false} />
             <XAxis
               dataKey="label"
-              tick={{ fontSize: 12 }}
+              tick={{ fontSize: isNarrow ? 10 : 12 }}
               interval={0}
-              angle={-20}
-              dy={8}
-              height={50}
+              // Steeper on phones so the eight salary ranges don't run into each other.
+              angle={isNarrow ? -50 : -20}
+              textAnchor="end"
+              dy={4}
+              height={isNarrow ? 110 : 78}
+              label={{
+                ...AXIS_TITLE,
+                value: 'Salary range (USD per year)',
+                position: 'insideBottom',
+              }}
             />
-            <YAxis tickFormatter={formatCount} tick={{ fontSize: 12 }} width={56} />
+            <YAxis
+              tickFormatter={formatCount}
+              tick={{ fontSize: 12 }}
+              width={72}
+              label={{
+                ...AXIS_TITLE,
+                value: 'Number of employees',
+                angle: -90,
+                position: 'insideLeft',
+                style: { ...AXIS_TITLE.style, textAnchor: 'middle' },
+              }}
+            />
             <Tooltip formatter={(value) => [formatCount(Number(value)), 'Employees']} />
             <Bar dataKey="headcount" fill={palette.brown} radius={[8, 8, 0, 0]} />
           </BarChart>
@@ -206,6 +240,7 @@ export function JobTitlePaySection({ countries }: { countries: CountryPay[] }) {
 /** "Which department costs us the most?": headcount and USD cost per department. */
 export function DepartmentSection() {
   const departments = useGetCostByDepartmentQuery();
+  const isNarrow = useIsNarrow();
   return (
     <SectionCard
       title="Cost by department"
@@ -227,16 +262,39 @@ export function DepartmentSection() {
             alignItems: 'center',
           }}
         >
-          <Box aria-hidden sx={{ height: Math.max(220, departments.data.length * 36) }}>
+          <Box aria-hidden sx={{ height: Math.max(260, departments.data.length * 36 + 50) }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={departments.data}
                 layout="vertical"
-                margin={{ top: 0, right: 16, left: 8, bottom: 0 }}
+                margin={{ top: 0, right: 16, left: 8, bottom: 8 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke={palette.line} horizontal={false} />
-                <XAxis type="number" tickFormatter={formatCompactUsd} tick={{ fontSize: 12 }} />
-                <YAxis type="category" dataKey="department" width={130} tick={{ fontSize: 12 }} />
+                <XAxis
+                  type="number"
+                  tickFormatter={formatCompactUsd}
+                  tick={{ fontSize: 12 }}
+                  height={48}
+                  label={{
+                    ...AXIS_TITLE,
+                    value: 'Total annual cost (USD)',
+                    position: 'insideBottom',
+                  }}
+                />
+                <YAxis
+                  type="category"
+                  dataKey="department"
+                  // Narrower on phones so the bars and the axis title have room.
+                  width={isNarrow ? 112 : 160}
+                  tick={{ fontSize: isNarrow ? 11 : 12 }}
+                  label={{
+                    ...AXIS_TITLE,
+                    value: 'Department',
+                    angle: -90,
+                    position: 'insideLeft',
+                    style: { ...AXIS_TITLE.style, textAnchor: 'middle' },
+                  }}
+                />
                 <Tooltip formatter={(value) => [formatCompactUsd(Number(value)), 'Total cost']} />
                 <Bar dataKey="totalUsd" fill={palette.green} radius={[0, 8, 8, 0]} />
               </BarChart>

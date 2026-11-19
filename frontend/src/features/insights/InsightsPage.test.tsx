@@ -1,5 +1,22 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
+import { cloneElement, isValidElement, type ReactNode } from 'react';
+
+// jsdom has no layout, so ResponsiveContainer would size charts at 0×0 and draw nothing.
+// A fixed size lets the real SVG (bars, axes and their titles) render in these tests.
+vi.mock('recharts', async (importOriginal) => {
+  const recharts = await importOriginal<typeof import('recharts')>();
+  return {
+    ...recharts,
+    ResponsiveContainer: ({ children }: { children: ReactNode }) =>
+      isValidElement(children)
+        ? cloneElement(children as React.ReactElement<{ width: number; height: number }>, {
+            width: 800,
+            height: 320,
+          })
+        : null,
+  };
+});
 import type {
   CountryJobTitlePay,
   CountryPay,
@@ -127,6 +144,30 @@ describe('<InsightsPage />', () => {
     const table = await screen.findByRole('table', { name: 'Salary distribution' });
     expect(within(table).getAllByRole('row')).toHaveLength(9); // header + 8 bands
     expect(within(table).getByRole('row', { name: '$10k–$25k 2,400' })).toBeInTheDocument();
+  });
+
+  it('titles the distribution chart’s axes: salary range across, number of employees up', async () => {
+    serveInsights();
+    renderWithProviders(<InsightsPage />);
+
+    const section = await screen.findByRole('region', { name: 'Salary distribution' });
+    await waitFor(() =>
+      expect(within(section).getByText('Salary range (USD per year)')).toBeInTheDocument(),
+    );
+    expect(within(section).getByText('Number of employees')).toBeInTheDocument();
+  });
+
+  it('titles the department chart’s axes: total annual cost across, department up', async () => {
+    serveInsights();
+    renderWithProviders(<InsightsPage />);
+
+    const section = await screen.findByRole('region', { name: 'Cost by department' });
+    await waitFor(() =>
+      expect(within(section).getByText('Total annual cost (USD)')).toBeInTheDocument(),
+    );
+    expect(
+      within(section).getByText('Department', { selector: 'text, tspan' }),
+    ).toBeInTheDocument();
   });
 
   it('compares pay by country, most expensive first, in local currency and USD', async () => {
