@@ -18,6 +18,13 @@ function recordDirectoryRequests(respond = () => HttpResponse.json(pageOf([asha,
   return requests;
 }
 
+/** The button is enabled once the countries have loaded (the form needs them). */
+async function addEmployeeButton() {
+  const button = await screen.findByRole('button', { name: 'Add employee' });
+  await waitFor(() => expect(button).toBeEnabled());
+  return button;
+}
+
 function CurrentSearch() {
   return <output data-testid="url">{useLocation().search}</output>;
 }
@@ -198,8 +205,10 @@ describe('<EmployeesPage />', () => {
     const info = within(ashaRow).getByRole('button', {
       name: 'Left on 31 Jan 2026. Their record and salary history are kept.',
     });
+    expect(within(ashaRow).getByText('Last working day: 31 Jan 2026')).toBeInTheDocument();
     const johnRow = within(table).getByRole('row', { name: /John Smith/ });
     expect(within(johnRow).queryByText('Former')).not.toBeInTheDocument();
+    expect(within(johnRow).queryByText(/Last working day/)).not.toBeInTheDocument();
 
     await user.hover(info);
     expect(await screen.findByRole('tooltip')).toHaveTextContent('Left on 31 Jan 2026');
@@ -263,7 +272,7 @@ describe('<EmployeesPage />', () => {
     );
     const { user } = renderPage();
 
-    await user.click(await screen.findByRole('button', { name: 'Add employee' }));
+    await user.click(await addEmployeeButton());
     const form = await screen.findByRole('dialog');
     await user.type(within(form).getByLabelText('Full name'), 'Meera Nair');
     await user.type(within(form).getByLabelText('Email'), 'meera.nair@acme.example');
@@ -296,13 +305,27 @@ describe('<EmployeesPage />', () => {
     recordDirectoryRequests();
     const { user } = renderPage();
 
-    await user.click(await screen.findByRole('button', { name: 'Add employee' }));
+    await user.click(await addEmployeeButton());
     const form = await screen.findByRole('dialog');
     await user.click(within(form).getByRole('button', { name: 'Add employee' }));
 
     expect(within(form).getByLabelText('Full name')).toHaveAccessibleDescription('Required');
     expect(within(form).getByText('Choose a country')).toBeInTheDocument();
     expect(within(form).getByText('Basic is required')).toBeInTheDocument();
+  });
+
+  it('shows the last working day of former employees on phone cards too', async () => {
+    window.innerWidth = 375;
+    recordDirectoryRequests(() =>
+      HttpResponse.json(pageOf([john, { ...asha, status: 'left', leftOn: '2026-01-31' }])),
+    );
+    renderPage('/employees?status=left');
+
+    const list = await screen.findByRole('list', { name: 'Employees' });
+    const [johnCard, ashaCard] = within(list).getAllByRole('listitem');
+    expect(within(ashaCard!).getByText('Last working day: 31 Jan 2026')).toBeInTheDocument();
+    expect(within(ashaCard!).getByText('Former')).toBeInTheDocument();
+    expect(within(johnCard!).queryByText(/Last working day/)).not.toBeInTheDocument();
   });
 
   it('shows cards instead of a table on a phone', async () => {

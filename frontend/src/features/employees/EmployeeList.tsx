@@ -72,6 +72,11 @@ function EmployeeName({ employee }: { employee: EmployeeSummary }) {
       <Typography variant="body2" color="text.secondary" noWrap>
         {employee.email}
       </Typography>
+      {isFormer && employee.leftOn && (
+        <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
+          Last working day: {formatDate(employee.leftOn)}
+        </Typography>
+      )}
     </Box>
   );
 }
