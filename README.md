@@ -141,3 +141,7 @@ docker compose --env-file .env.production -f docker-compose.prod.yml up -d --bui
 The production image was run locally against an SSL-only PostgreSQL with its own certificate
 authority (standing in for RDS), behind Caddy: migrations and the app connected over TLS 1.3 with
 the certificate verified, and both refused to connect when given the wrong certificate authority.
+The test CA was placed at the end of Amazon's full certificate bundle, as on RDS: Prisma's
+migration engine trusts only the first certificate in a file, so on start-up `src/db/migrate.ts`
+verifies the server against the whole bundle (hostname included) and gives Prisma just the root
+that signed it.

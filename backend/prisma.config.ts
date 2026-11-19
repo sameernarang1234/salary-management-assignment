@@ -12,6 +12,7 @@ export default defineConfig({
   datasource: {
     // Read lazily so `prisma generate` works without a database (e.g. on a fresh install).
     // Same DATABASE_URL as the app, with SSL settings translated for Prisma's migration engine.
-    url: toPrismaCliUrl(process.env.DATABASE_URL ?? ''),
+    // MIGRATION_CA_FILE is set by src/db/migrate.ts in production.
+    url: toPrismaCliUrl(process.env.DATABASE_URL ?? '', process.env.MIGRATION_CA_FILE),
   },
 });

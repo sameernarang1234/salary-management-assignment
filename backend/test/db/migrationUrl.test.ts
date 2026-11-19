@@ -38,6 +38,25 @@ describe('toPrismaCliUrl', () => {
     expect(decodeURIComponent(new URL(url).password)).toBe('p@ss/w0rd');
   });
 
+  it('uses the single root CA file instead of the bundle when one is given', () => {
+    const url = toPrismaCliUrl(
+      `${base}?sslmode=verify-full&sslrootcert=${CA}`,
+      '/tmp/migration-root-ca.pem',
+    );
+
+    expect(paramsOf(url)).toEqual({
+      sslmode: 'require',
+      sslcert: '/tmp/migration-root-ca.pem',
+      sslaccept: 'strict',
+    });
+  });
+
+  it('ignores an empty root CA file setting', () => {
+    expect(
+      paramsOf(toPrismaCliUrl(`${base}?sslmode=verify-full&sslrootcert=${CA}`, '')),
+    ).toMatchObject({ sslcert: CA });
+  });
+
   it('leaves a local URL without SSL settings unchanged', () => {
     const local = 'postgresql://salary:salary@localhost:5432/salary_dev';
 
