@@ -433,3 +433,21 @@ Follow CLAUDE.md and docs/PLAN.md. Implement Step 12 (insights page) only, in fr
 **Outcome:** The insights page: headline figures, a salary distribution chart, pay by country, pay by job title within a chosen country and cost by department (chart and table). Each chart has a table of the same data for screen readers, and Recharts loads only with this page (108 kB gzipped). Checked against the seeded data: 9,547 employees, $651.4M payroll, $61,198 median; the distribution bands and the countries' headcounts each add up to 9,547. 7 tests written first and seen failing, then 104/104 frontend tests passing; typecheck and build clean.
 
 **Commit(s):** _to be added_
+
+---
+
+## 15. Employees page: multi-select filters, salary sort, status filter
+
+**Prompt**
+
+```text
+Make the following modification in the code:
+
+* In Employees page, Country, Department and Job title are single select fields, in which, only one entry can be selected at a time. Make them multiple select fields, in which, more than one entry can be selected at any given time.
+* Just like we have the sorting functionality in the Employees table for Employee Name column, add the similar functionality for Annual Salary Column. Since salaries for different countries can be in different currencies, use USD as the common currency for implementing the sorting functionality.
+* Instead of the "Show Leavers" toggle button, add another filter, similar to already available filters, with options as "Active Employees", "Previous Employees", "Show All". Use suitable names to be displayed on screen for these options. For all the previous / ex-employees, the ones who have left, show an appropriate indicator, like, an i button showing an appropriate message on hover, or, a different font, or both, or whichever other approach seems better. I'll review this, as well as other changes.
+```
+
+**Outcome:** Country, Department and Job title are multi-select filters (repeated URL and API parameters, any value matches, up to 50 per filter). The Annual salary column sorts by each employee's total converted to USD, so different currencies compare fairly; the directory list became one parameterised SQL query (allow-listed sort columns, bound values, results checked with Zod) because Prisma can't sort by that calculated total. The "Show leavers" switch was replaced by an "Employees to show" filter (Current, Former, All employees); former employees are shown in muted italics with a "Former" chip and an info button whose tooltip gives the leaving date. REQUIREMENTS.md and PLAN.md updated. Tests written first and seen failing, then 335/335 backend and 107/107 frontend tests passing; directory calls measured at 23–58 ms with 10,000 employees.
+
+**Commit(s):** _to be added_
