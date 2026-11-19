@@ -24,7 +24,7 @@ HR Manager of the org (the only user): Comfortable with Excel but not technical,
 - Mark as left instead of deleting: The employee leaves the active directory, insights and exports, but their record and salary history are kept; former employees can still be listed, and are clearly marked.
 - Salary components: Each salary is made of components from a fixed catalogue (Basic is required; allowances such as House Rent, Housing, Transport and Special allowance are optional). Total annual salary is the sum of the components.
 - Employee details page: Opens when an employee is clicked in the directory; shows their details, salary breakdown by component, and salary history.
-- Salary history: Every salary change records the old and new components and totals, the effective date, a reason (annual increment, protion, correction or other), and when the change was made. History entries cannot be edited or deleted.
+- Salary history: Every salary change records the old and new components and totals, the effective date, a reason (annual increment, promotion, correction or other), and when the change was made. History entries cannot be edited or deleted.
 - Local currencies: Salaries are stored in the employee's country currency; a dated reference rate converts them to USD, because org-wide comparisons need one unit.
 - Insights overview: Headcount, total annual payroll (USD), median salary (USD) and salary distribution: "how do we pay people?" at a glance.
 - Pay by country: Headcount and min / median / average / max (local currency), plus average in USD. The main comparison in a multi-country org.
@@ -41,7 +41,7 @@ HR Manager of the org (the only user): Comfortable with Excel but not technical,
 - Bonuses, benefits, equity, payroll and tax: One-off and variable pay are a different problem (*paying* people rather than *understanding* fixed pay). History tracks changes to fixed salary only.
 - Spreadsheet import: The seed script stands in for migration. A safe import (column mapping, validation report, partial failures) is a project of its own.
 - Live exchange rates: Rates change daily, so reports would not be reproducible. v1 uses a dated, static table shown in the UI.
-- Bulk edits** (e.g. +5% for a country): Risky; comes after salary history is done and tested in v1.
+- Bulk edits (e.g. +5% for a country): Risky; comes after salary history is done and tested in v1.
 - Multiple organisations: The software is specific to ACME.
 
 ## Quality requirements
@@ -54,6 +54,6 @@ HR Manager of the org (the only user): Comfortable with Excel but not technical,
 
 ## Assumptions
 
-- "Salary" means **total gross annual fixed pay: The sum of its components, in the employee's local currency.
+- "Salary" means total gross annual fixed pay: The sum of its components, in the employee's local currency.
 - Each employee works in one country; their currency is that country's currency.
 - Email uniquely identifies an employee.
