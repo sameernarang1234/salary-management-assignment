@@ -1,5 +1,7 @@
 import {
   Box,
+  Card,
+  CardContent,
   LinearProgress,
   MenuItem,
   Table,
@@ -13,7 +15,7 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import { useState } from 'react';
+import { Fragment, useState, type ReactNode } from 'react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import {
   useGetCostByDepartmentQuery,
@@ -106,29 +108,121 @@ export function DistributionSection({ bands }: { bands: SalaryBand[] }) {
   );
 }
 
+/** Tables need about 720px beside the sidebar; narrower screens get one card per row. */
+function useWideLayout(): boolean {
+  const theme = useTheme();
+  return useMediaQuery(theme.breakpoints.up('lg'));
+}
+
+/** Tighter cell padding (8px instead of 16px) so wide tables fit beside the sidebar. */
+const compactTable = {
+  '& th, & td': { px: 1 },
+  '& th:first-of-type, & td:first-of-type': { pl: 0 },
+  '& th:last-of-type, & td:last-of-type': { pr: 0 },
+} as const;
+
+/** "₹9,74,000 – ₹63,24,000": each amount stays whole, and the range wraps at the dash. */
+function MoneyRange({ min, max, currency }: { min: number; max: number; currency: string }) {
+  return (
+    <>
+      <Box component="span" sx={numberCell}>
+        {formatMoney(min, currency)}
+      </Box>{' '}
+      –{' '}
+      <Box component="span" sx={numberCell}>
+        {formatMoney(max, currency)}
+      </Box>
+    </>
+  );
+}
+
+interface CardItem {
+  key: string;
+  title: string;
+  subtitle?: string;
+  stats: [label: string, value: ReactNode][];
+}
+
+/** One card per row, for screens too narrow for the table. */
+function StatCardList({ label, items }: { label: string; items: CardItem[] }) {
+  return (
+    <Box
+      component="ul"
+      aria-label={label}
+      sx={{
+        listStyle: 'none',
+        p: 0,
+        m: 0,
+        display: 'grid',
+        gap: 2,
+        gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
+      }}
+    >
+      {items.map((item) => (
+        <Card component="li" key={item.key} sx={{ borderRadius: 5, boxShadow: 'none' }}>
+          <CardContent sx={{ p: 2.5, '&:last-child': { pb: 2.5 } }}>
+            <Typography sx={{ fontWeight: 700 }}>{item.title}</Typography>
+            {item.subtitle && (
+              <Typography variant="body2" color="text.secondary">
+                {item.subtitle}
+              </Typography>
+            )}
+            <Box
+              component="dl"
+              sx={{
+                m: 0,
+                mt: 1.5,
+                display: 'grid',
+                gridTemplateColumns: 'auto minmax(0, 1fr)',
+                columnGap: 2,
+                rowGap: 0.75,
+              }}
+            >
+              {item.stats.map(([statLabel, value]) => (
+                <Fragment key={statLabel}>
+                  <Typography component="dt" variant="body2" color="text.secondary">
+                    {statLabel}
+                  </Typography>
+                  <Typography
+                    component="dd"
+                    variant="body2"
+                    sx={{ m: 0, textAlign: 'right', fontWeight: 600 }}
+                  >
+                    {value}
+                  </Typography>
+                </Fragment>
+              ))}
+            </Box>
+          </CardContent>
+        </Card>
+      ))}
+    </Box>
+  );
+}
+
 /** "Which country costs us the most?": pay per country in local currency, with USD totals. */
 export function CountryPaySection() {
   const countries = useGetPayByCountryQuery();
+  const isWide = useWideLayout();
   return (
     <SectionCard
       title="Pay by country"
-      subtitle="Most expensive first. Min, median, average and max in local currency."
+      subtitle="Most expensive first. Median, average and range in local currency."
     >
       {countries.isLoading && <LinearProgress aria-label="Loading pay by country" />}
       {countries.isError && (
         <ErrorState message="Could not load pay by country." onRetry={() => countries.refetch()} />
       )}
-      {countries.data && (
+      {countries.data && isWide && (
         <TableContainer>
-          <Table aria-label="Pay by country" size="small">
+          <Table aria-label="Pay by country" size="small" sx={compactTable}>
             <TableHead>
               <TableRow>
                 <TableCell>Country</TableCell>
                 <TableCell align="right">Headcount</TableCell>
-                <TableCell align="right">Min</TableCell>
                 <TableCell align="right">Median</TableCell>
                 <TableCell align="right">Average</TableCell>
-                <TableCell align="right">Max</TableCell>
+                <TableCell align="right">Range (min – max)</TableCell>
                 <TableCell align="right">Average (USD)</TableCell>
                 <TableCell align="right">Total cost (USD)</TableCell>
               </TableRow>
@@ -140,11 +234,15 @@ export function CountryPaySection() {
                     {row.countryName}
                   </TableCell>
                   <TableCell align="right">{formatCount(row.headcount)}</TableCell>
-                  {[row.min, row.median, row.average, row.max].map((amount, index) => (
-                    <TableCell key={index} align="right" sx={numberCell}>
-                      {formatMoney(amount, row.currency)}
-                    </TableCell>
-                  ))}
+                  <TableCell align="right" sx={numberCell}>
+                    {formatMoney(row.median, row.currency)}
+                  </TableCell>
+                  <TableCell align="right" sx={numberCell}>
+                    {formatMoney(row.average, row.currency)}
+                  </TableCell>
+                  <TableCell align="right">
+                    <MoneyRange min={row.min} max={row.max} currency={row.currency} />
+                  </TableCell>
                   <TableCell align="right" sx={numberCell}>
                     {formatMoney(row.averageUsd, 'USD')}
                   </TableCell>
@@ -157,6 +255,26 @@ export function CountryPaySection() {
           </Table>
         </TableContainer>
       )}
+      {countries.data && !isWide && (
+        <StatCardList
+          label="Pay by country"
+          items={countries.data.map((row) => ({
+            key: row.countryCode,
+            title: row.countryName,
+            subtitle: `${formatCount(row.headcount)} employees · ${row.currency}`,
+            stats: [
+              ['Median', formatMoney(row.median, row.currency)],
+              ['Average', formatMoney(row.average, row.currency)],
+              [
+                'Range',
+                <MoneyRange key="range" min={row.min} max={row.max} currency={row.currency} />,
+              ],
+              ['Average (USD)', formatMoney(row.averageUsd, 'USD')],
+              ['Total cost (USD)', formatCompactUsd(row.totalUsd)],
+            ],
+          }))}
+        />
+      )}
     </SectionCard>
   );
 }
@@ -164,9 +282,11 @@ export function CountryPaySection() {
 /** "What do we pay a Software Engineer in India?": pay per job title in one country. */
 export function JobTitlePaySection({ countries }: { countries: CountryPay[] }) {
   const [chosen, setChosen] = useState<string>();
+  const isWide = useWideLayout();
   const countryCode = chosen ?? countries[0]?.countryCode;
   const jobTitles = useGetPayByJobTitleQuery(countryCode ?? '', { skip: !countryCode });
   const data = jobTitles.data?.countryCode === countryCode ? jobTitles.data : undefined;
+  const label = data ? `Pay by job title in ${data.countryName}` : 'Pay by job title';
 
   return (
     <SectionCard
@@ -179,7 +299,7 @@ export function JobTitlePaySection({ countries }: { countries: CountryPay[] }) {
           label="Country"
           value={countryCode ?? ''}
           onChange={(event) => setChosen(event.target.value)}
-          sx={{ minWidth: 220 }}
+          sx={{ minWidth: { xs: '100%', sm: 220 } }}
         >
           {countries.map((country) => (
             <MenuItem key={country.countryCode} value={country.countryCode}>
@@ -202,17 +322,16 @@ export function JobTitlePaySection({ countries }: { countries: CountryPay[] }) {
           description={`Nobody currently works in ${data.countryName}.`}
         />
       )}
-      {data && data.jobTitles.length > 0 && (
+      {data && data.jobTitles.length > 0 && isWide && (
         <TableContainer>
-          <Table aria-label={`Pay by job title in ${data.countryName}`} size="small">
+          <Table aria-label={label} size="small" sx={compactTable}>
             <TableHead>
               <TableRow>
                 <TableCell>Job title</TableCell>
                 <TableCell align="right">Headcount</TableCell>
-                <TableCell align="right">Min</TableCell>
                 <TableCell align="right">Median</TableCell>
                 <TableCell align="right">Average</TableCell>
-                <TableCell align="right">Max</TableCell>
+                <TableCell align="right">Range (min – max)</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -222,16 +341,38 @@ export function JobTitlePaySection({ countries }: { countries: CountryPay[] }) {
                     {row.jobTitle}
                   </TableCell>
                   <TableCell align="right">{formatCount(row.headcount)}</TableCell>
-                  {[row.min, row.median, row.average, row.max].map((amount, index) => (
-                    <TableCell key={index} align="right" sx={numberCell}>
-                      {formatMoney(amount, data.currency)}
-                    </TableCell>
-                  ))}
+                  <TableCell align="right" sx={numberCell}>
+                    {formatMoney(row.median, data.currency)}
+                  </TableCell>
+                  <TableCell align="right" sx={numberCell}>
+                    {formatMoney(row.average, data.currency)}
+                  </TableCell>
+                  <TableCell align="right">
+                    <MoneyRange min={row.min} max={row.max} currency={data.currency} />
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </TableContainer>
+      )}
+      {data && data.jobTitles.length > 0 && !isWide && (
+        <StatCardList
+          label={label}
+          items={data.jobTitles.map((row) => ({
+            key: row.jobTitle,
+            title: row.jobTitle,
+            stats: [
+              ['Headcount', formatCount(row.headcount)],
+              ['Median', formatMoney(row.median, data.currency)],
+              ['Average', formatMoney(row.average, data.currency)],
+              [
+                'Range',
+                <MoneyRange key="range" min={row.min} max={row.max} currency={data.currency} />,
+              ],
+            ],
+          }))}
+        />
       )}
     </SectionCard>
   );
@@ -253,15 +394,8 @@ export function DepartmentSection() {
           onRetry={() => departments.refetch()}
         />
       )}
-      {departments.data && (
-        <Box
-          sx={{
-            display: 'grid',
-            gap: 3,
-            gridTemplateColumns: { xs: '1fr', lg: '3fr 2fr' },
-            alignItems: 'center',
-          }}
-        >
+      {departments.data && departments.data.length > 0 && (
+        <>
           <Box aria-hidden sx={{ height: Math.max(260, departments.data.length * 36 + 50) }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
@@ -300,35 +434,55 @@ export function DepartmentSection() {
               </BarChart>
             </ResponsiveContainer>
           </Box>
-          <TableContainer>
-            <Table aria-label="Cost by department" size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Department</TableCell>
-                  <TableCell align="right">Headcount</TableCell>
-                  <TableCell align="right">Total</TableCell>
-                  <TableCell align="right">Average</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {departments.data.map((row) => (
-                  <TableRow key={row.department} hover>
-                    <TableCell component="th" scope="row" sx={{ fontWeight: 600 }}>
-                      {row.department}
-                    </TableCell>
-                    <TableCell align="right">{formatCount(row.headcount)}</TableCell>
-                    <TableCell align="right" sx={numberCell}>
-                      {formatCompactUsd(row.totalUsd)}
-                    </TableCell>
-                    <TableCell align="right" sx={numberCell}>
-                      {formatMoney(row.averageUsd, 'USD')}
-                    </TableCell>
+          {/* Phones: one card per department, so nothing scrolls sideways. */}
+          {isNarrow && (
+            <Box sx={{ mt: 3 }}>
+              <StatCardList
+                label="Cost by department"
+                items={departments.data.map((row) => ({
+                  key: row.department,
+                  title: row.department,
+                  stats: [
+                    ['Headcount', formatCount(row.headcount)],
+                    ['Total cost (USD)', formatCompactUsd(row.totalUsd)],
+                    ['Average (USD)', formatMoney(row.averageUsd, 'USD')],
+                  ],
+                }))}
+              />
+            </Box>
+          )}
+          {/* Wider screens: below the chart, at full width, so all four columns fit. */}
+          {!isNarrow && (
+            <TableContainer sx={{ mt: 3 }}>
+              <Table aria-label="Cost by department" size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Department</TableCell>
+                    <TableCell align="right">Headcount</TableCell>
+                    <TableCell align="right">Total</TableCell>
+                    <TableCell align="right">Average</TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Box>
+                </TableHead>
+                <TableBody>
+                  {departments.data.map((row) => (
+                    <TableRow key={row.department} hover>
+                      <TableCell component="th" scope="row" sx={{ fontWeight: 600 }}>
+                        {row.department}
+                      </TableCell>
+                      <TableCell align="right">{formatCount(row.headcount)}</TableCell>
+                      <TableCell align="right" sx={numberCell}>
+                        {formatCompactUsd(row.totalUsd)}
+                      </TableCell>
+                      <TableCell align="right" sx={numberCell}>
+                        {formatMoney(row.averageUsd, 'USD')}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </>
       )}
       {departments.data?.length === 0 && (
         <Typography color="text.secondary">No departments yet.</Typography>

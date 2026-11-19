@@ -170,17 +170,60 @@ describe('<InsightsPage />', () => {
     ).toBeInTheDocument();
   });
 
+  it('keeps the chart’s data table for screen readers 1px in size, so it can’t widen the page', async () => {
+    serveInsights();
+    renderWithProviders(<InsightsPage />);
+
+    const table = await screen.findByRole('table', { name: 'Salary distribution' });
+    const style = getComputedStyle(table);
+
+    // In MUI's sx, a bare 1 means 100%; the hidden table must be 1px, not full width.
+    expect(style.position).toBe('absolute');
+    expect(style.width).toBe('1px');
+    expect(style.height).toBe('1px');
+    expect(style.overflow).toBe('hidden');
+  });
+
   it('compares pay by country, most expensive first, in local currency and USD', async () => {
     serveInsights();
     renderWithProviders(<InsightsPage />);
 
     const table = await screen.findByRole('table', { name: 'Pay by country' });
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((cell) => cell.textContent),
+    ).toEqual([
+      'Country',
+      'Headcount',
+      'Median',
+      'Average',
+      'Range (min – max)',
+      'Average (USD)',
+      'Total cost (USD)',
+    ]);
     const rows = within(table).getAllByRole('row').slice(1);
     expect(rows[0]).toHaveTextContent('United States');
     expect(rows[0]).toHaveTextContent('$191.3M');
     expect(rows[1]).toHaveTextContent('India');
     expect(rows[1]).toHaveTextContent('₹24,00,000'); // median, local
+    expect(rows[1]).toHaveTextContent('₹9,00,000 – ₹60,00,000'); // range, local
     expect(rows[1]).toHaveTextContent('$30,600'); // average, USD
+  });
+
+  it('shows pay by country as cards on narrower screens, so nothing scrolls sideways', async () => {
+    window.innerWidth = 1024;
+    serveInsights();
+    renderWithProviders(<InsightsPage />);
+
+    const list = await screen.findByRole('list', { name: 'Pay by country' });
+    const cards = within(list).getAllByRole('listitem');
+    expect(cards).toHaveLength(2);
+    expect(cards[1]).toHaveTextContent('India');
+    expect(cards[1]).toHaveTextContent('Median₹24,00,000');
+    expect(cards[1]).toHaveTextContent('Range₹9,00,000 – ₹60,00,000');
+    expect(cards[1]).toHaveTextContent('Total cost (USD)$103.4M');
+    expect(screen.queryByRole('table', { name: 'Pay by country' })).not.toBeInTheDocument();
   });
 
   it('answers "what do we pay a Software Engineer in a country?", for the chosen country', async () => {
@@ -190,7 +233,14 @@ describe('<InsightsPage />', () => {
     // Starts with the most expensive country.
     let table = await screen.findByRole('table', { name: 'Pay by job title in United States' });
     expect(
-      within(table).getByRole('row', { name: /Software Engineer 300 \$80,000 \$110,000/ }),
+      within(table)
+        .getAllByRole('columnheader')
+        .map((cell) => cell.textContent),
+    ).toEqual(['Job title', 'Headcount', 'Median', 'Average', 'Range (min – max)']);
+    expect(
+      within(table).getByRole('row', {
+        name: 'Software Engineer 300 $110,000 $111,000 $80,000 – $150,000',
+      }),
     ).toBeInTheDocument();
 
     await user.click(screen.getByRole('combobox', { name: 'Country' }));
@@ -199,6 +249,19 @@ describe('<InsightsPage />', () => {
     table = await screen.findByRole('table', { name: 'Pay by job title in India' });
     expect(within(table).getByText('₹26,00,000')).toBeInTheDocument();
     expect(jobTitleRequests).toEqual(['US', 'IN']);
+  });
+
+  it('shows pay by job title as cards on narrower screens', async () => {
+    window.innerWidth = 375;
+    serveInsights();
+    renderWithProviders(<InsightsPage />);
+
+    const list = await screen.findByRole('list', { name: 'Pay by job title in United States' });
+    const [card] = within(list).getAllByRole('listitem');
+    expect(card).toHaveTextContent('Software Engineer');
+    expect(card).toHaveTextContent('Headcount300');
+    expect(card).toHaveTextContent('Median$110,000');
+    expect(card).toHaveTextContent('Range$80,000 – $150,000');
   });
 
   it('shows headcount and cost by department', async () => {
@@ -212,6 +275,20 @@ describe('<InsightsPage />', () => {
     expect(
       within(table).getByRole('row', { name: 'Sales 1,050 $84M $80,000' }),
     ).toBeInTheDocument();
+  });
+
+  it('shows cost by department as cards on a phone', async () => {
+    window.innerWidth = 375;
+    serveInsights();
+    renderWithProviders(<InsightsPage />);
+
+    const list = await screen.findByRole('list', { name: 'Cost by department' });
+    const [engineering] = within(list).getAllByRole('listitem');
+    expect(engineering).toHaveTextContent('Engineering');
+    expect(engineering).toHaveTextContent('Headcount3,800');
+    expect(engineering).toHaveTextContent('Total cost (USD)$380M');
+    expect(engineering).toHaveTextContent('Average (USD)$100,000');
+    expect(screen.queryByRole('table', { name: 'Cost by department' })).not.toBeInTheDocument();
   });
 
   it('explains that there is nothing to show yet when there are no active employees', async () => {
