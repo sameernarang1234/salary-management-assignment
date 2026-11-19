@@ -465,3 +465,17 @@ In the Employees page, when former employees, or, all employees, is selected, sh
 **Outcome:** Former employees show "Last working day: <date>" in muted italics under their name and email, in both the table and the phone cards, alongside the "Former" chip and info button; current employees don't get the line. Frontend only: directory rows already carried the leaving date. Tests updated first and seen failing; a flaky existing test (clicking "Add employee" before the countries had loaded, while the button is deliberately disabled) now waits for the button to be enabled. 108/108 frontend tests passing; typecheck clean.
 
 **Commit(s):** _to be added_
+
+---
+
+## 17. Insights page: chart axis titles
+
+**Prompt**
+
+```text
+In the insights page, in the bar graphs, add x axis and y axis labels, indicating the data point shown on those axis, example "employee count", or, "salary range" etc.
+```
+
+**Outcome:** Axis titles on both bar charts: the salary distribution ("Salary range (USD per year)" across, "Number of employees" up) and cost by department ("Total annual cost (USD)" across, "Department" up). Tests written first and seen failing; they give Recharts a fixed size in jsdom so the real chart renders. A browser check measured every title against every tick label: no overlaps at 1280 px, but at phone width the department title was clipped and the salary ranges ran into each other. On phones, the department column now narrows and the salary ranges tilt more steeply in a smaller font. 110/110 frontend tests passing; typecheck and build clean.
+
+**Commit(s):** _to be added_
