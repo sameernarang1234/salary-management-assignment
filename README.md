@@ -3,6 +3,10 @@
 Web software for ACME's HR Manager to manage salary records for 10,000 employees in several
 countries, track every salary change, and answer pay questions without spreadsheets.
 
+**Live app:** https://15.135.185.17.sslip.io (AWS EC2 + RDS, Sydney, loaded with 10,000 sample
+employees). It has one HR Manager account. The sign-in details are shared with reviewers
+separately and are not stored in this repository.
+
 - **Requirements:** [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md)
 - **Plan, data model and design decisions:** [docs/PLAN.md](docs/PLAN.md)
 - **Rules followed by the AI coding agent:** [CLAUDE.md](CLAUDE.md)
