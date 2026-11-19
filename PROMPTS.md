@@ -451,3 +451,17 @@ Make the following modification in the code:
 **Outcome:** Country, Department and Job title are multi-select filters (repeated URL and API parameters, any value matches, up to 50 per filter). The Annual salary column sorts by each employee's total converted to USD, so different currencies compare fairly; the directory list became one parameterised SQL query (allow-listed sort columns, bound values, results checked with Zod) because Prisma can't sort by that calculated total. The "Show leavers" switch was replaced by an "Employees to show" filter (Current, Former, All employees); former employees are shown in muted italics with a "Former" chip and an info button whose tooltip gives the leaving date. REQUIREMENTS.md and PLAN.md updated. Tests written first and seen failing, then 335/335 backend and 107/107 frontend tests passing; directory calls measured at 23–58 ms with 10,000 employees.
 
 **Commit(s):** _to be added_
+
+---
+
+## 16. Employees page: last working day of former employees
+
+**Prompt**
+
+```text
+In the Employees page, when former employees, or, all employees, is selected, show the last working date of the former employee as well, along with the marker.
+```
+
+**Outcome:** Former employees show "Last working day: <date>" in muted italics under their name and email, in both the table and the phone cards, alongside the "Former" chip and info button; current employees don't get the line. Frontend only: directory rows already carried the leaving date. Tests updated first and seen failing; a flaky existing test (clicking "Add employee" before the countries had loaded, while the button is deliberately disabled) now waits for the button to be enabled. 108/108 frontend tests passing; typecheck clean.
+
+**Commit(s):** _to be added_
