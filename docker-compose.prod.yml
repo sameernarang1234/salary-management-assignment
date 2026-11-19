@@ -1,0 +1,41 @@
+# Production on one server: the app (API + frontend) behind Caddy, which serves HTTPS.
+# The database is Amazon RDS (DATABASE_URL in .env.production), so it is not in this file.
+#
+#   docker compose --env-file .env.production -f docker-compose.prod.yml up -d --build
+services:
+  app:
+    build: .
+    image: salary-app
+    env_file: .env.production
+    restart: unless-stopped
+    expose:
+      - '3000'
+    logging:
+      driver: json-file
+      options: { max-size: 10m, max-file: '3' }
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    # Caddy only needs the domain, not the database or HR Manager secrets.
+    environment:
+      DOMAIN: ${DOMAIN:?Set DOMAIN in .env.production}
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options: { max-size: 10m, max-file: '3' }
+
+volumes:
+  # HTTPS certificates live here, so restarts don't request new ones.
+  caddy-data:
+  caddy-config:

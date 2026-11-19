@@ -1,5 +1,6 @@
 import { config } from 'dotenv';
 import { defineConfig } from 'prisma/config';
+import { toPrismaCliUrl } from './src/db/migrationUrl.js';
 
 config({ quiet: true });
 
@@ -10,6 +11,7 @@ export default defineConfig({
   },
   datasource: {
     // Read lazily so `prisma generate` works without a database (e.g. on a fresh install).
-    url: process.env.DATABASE_URL ?? '',
+    // Same DATABASE_URL as the app, with SSL settings translated for Prisma's migration engine.
+    url: toPrismaCliUrl(process.env.DATABASE_URL ?? ''),
   },
 });

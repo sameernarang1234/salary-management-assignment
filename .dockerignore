@@ -1,0 +1,21 @@
+**/node_modules
+**/dist
+**/coverage
+**/*.log
+.git
+.gitattributes
+.github
+
+# Secrets and local settings never go into the image.
+**/.env
+**/.env.*
+
+# Not needed to build or run.
+docs
+PROMPTS.md
+CLAUDE.md
+backend/test
+backend/src/generated
+docker-compose.yml
+docker-compose.prod.yml
+deploy

@@ -6,6 +6,11 @@
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
+  // Stated explicitly rather than guessed from tsconfig.json, so the generated client is the
+  // same everywhere (in the Docker build, generation runs before tsconfig.json is copied).
+  runtime             = "nodejs"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
 }
 
 datasource db {

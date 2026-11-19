@@ -4,6 +4,7 @@ import { authRouter, requireSession } from './http/auth.js';
 import type { AppDependencies } from './http/dependencies.js';
 import { employeesRouter } from './http/employees.js';
 import { errorHandler, notFound } from './http/errors.js';
+import { frontendRouter } from './http/frontend.js';
 import { insightsRouter } from './http/insights.js';
 import { metaRouter } from './http/meta.js';
 
@@ -12,6 +13,10 @@ export type { AppDependencies } from './http/dependencies.js';
 export function createApp(dependencies: AppDependencies): Express {
   const app = express();
   app.disable('x-powered-by');
+  if (dependencies.trustProxy) {
+    // One hop: Caddy terminates HTTPS in front of the app.
+    app.set('trust proxy', 1);
+  }
   app.use(express.json({ limit: '100kb' }));
   app.use(cookieParser());
 
@@ -28,6 +33,12 @@ export function createApp(dependencies: AppDependencies): Express {
   app.use('/api/meta', metaRouter(dependencies));
 
   app.use('/api', notFound);
+
+  // Production: the built frontend, from the same origin as the API.
+  if (dependencies.staticDir) {
+    app.use(frontendRouter(dependencies.staticDir));
+  }
+
   app.use(errorHandler);
   return app;
 }
