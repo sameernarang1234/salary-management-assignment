@@ -27,13 +27,18 @@ export interface SalaryComponentType {
 
 export type SalaryChangeReason = 'annual_increment' | 'promotion' | 'correction' | 'other';
 
-export type EmployeeSortField = 'fullName' | 'jobTitle' | 'department' | 'country' | 'hireDate';
+export type EmployeeSortField =
+  'fullName' | 'jobTitle' | 'department' | 'country' | 'hireDate' | 'salary';
+
+/** Which employees the directory shows: current, former (left), or everyone. */
+export type EmployeeStatusFilter = 'active' | 'left' | 'all';
 
 export interface Meta {
   countries: Country[];
   salaryComponents: SalaryComponentType[];
   salaryChangeReasons: SalaryChangeReason[];
   sortFields: EmployeeSortField[];
+  employeeStatuses: EmployeeStatusFilter[];
   filterOptions: { departments: string[]; jobTitles: string[] };
   ratesAsOf: string;
 }
@@ -66,14 +71,15 @@ export interface Page<T> {
 /** Query parameters of GET /api/employees. */
 export interface EmployeeListParams {
   search?: string;
-  country?: string;
-  department?: string;
-  jobTitle?: string;
+  /** Sent as repeated parameters (?country=IN&country=US); any of them matches. */
+  country?: string[];
+  department?: string[];
+  jobTitle?: string[];
+  status?: EmployeeStatusFilter;
   sort?: EmployeeSortField;
   order?: 'asc' | 'desc';
   page?: number;
   pageSize?: number;
-  includeLeft?: 'true';
 }
 
 export interface SalaryComponent {

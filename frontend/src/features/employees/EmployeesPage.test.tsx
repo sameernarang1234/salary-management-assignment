@@ -58,31 +58,63 @@ describe('<EmployeesPage />', () => {
 
   it('sends the filters in the URL to the API', async () => {
     const requests = recordDirectoryRequests();
-    renderPage('/employees?country=IN&department=Engineering&sort=hireDate&order=desc&page=2');
+    renderPage(
+      '/employees?country=IN&country=US&department=Engineering&sort=hireDate&order=desc&page=2',
+    );
 
     await screen.findByRole('table', { name: 'Employees' });
 
-    expect(Object.fromEntries(requests.at(-1)!)).toEqual({
-      country: 'IN',
-      department: 'Engineering',
-      sort: 'hireDate',
-      order: 'desc',
-      page: '2',
-      pageSize: '25',
-    });
+    const request = requests.at(-1)!;
+    expect(request.getAll('country')).toEqual(['IN', 'US']);
+    expect(request.getAll('department')).toEqual(['Engineering']);
+    expect(request.get('status')).toBe('active');
+    expect(request.get('sort')).toBe('hireDate');
+    expect(request.get('order')).toBe('desc');
+    expect(request.get('page')).toBe('2');
   });
 
-  it('puts a chosen filter in the URL and goes back to page 1', async () => {
+  it('lets several countries be chosen at once, puts them in the URL and goes back to page 1', async () => {
     const requests = recordDirectoryRequests();
     const { user } = renderPage('/employees?page=3');
     await screen.findByRole('table', { name: 'Employees' });
 
     await user.click(screen.getByRole('combobox', { name: 'Country' }));
     await user.click(await screen.findByRole('option', { name: 'United States' }));
+    await user.click(screen.getByRole('option', { name: 'India' }));
+    await user.keyboard('{Escape}');
 
-    await waitFor(() => expect(screen.getByTestId('url')).toHaveTextContent('?country=US'));
-    await waitFor(() => expect(requests.at(-1)?.get('country')).toBe('US'));
+    // Kept in the list's order, whatever order they were clicked in.
+    await waitFor(() =>
+      expect(screen.getByTestId('url')).toHaveTextContent('?country=IN&country=US'),
+    );
+    await waitFor(() => expect(requests.at(-1)?.getAll('country')).toEqual(['IN', 'US']));
     expect(requests.at(-1)?.get('page')).toBe('1');
+    expect(screen.getByRole('combobox', { name: 'Country' })).toHaveTextContent(
+      'India, United States',
+    );
+  });
+
+  it('lets several departments and job titles be chosen, and unticking removes one', async () => {
+    const requests = recordDirectoryRequests();
+    const { user } = renderPage('/employees?department=Sales');
+    await screen.findByRole('table', { name: 'Employees' });
+
+    await user.click(screen.getByRole('combobox', { name: 'Department' }));
+    await user.click(await screen.findByRole('option', { name: 'Engineering' }));
+    await user.click(screen.getByRole('option', { name: 'Sales' }));
+    await user.keyboard('{Escape}');
+    await user.click(screen.getByRole('combobox', { name: 'Job title' }));
+    await user.click(await screen.findByRole('option', { name: 'Account Executive' }));
+    await user.click(screen.getByRole('option', { name: 'Software Engineer' }));
+    await user.keyboard('{Escape}');
+
+    await waitFor(() =>
+      expect(requests.at(-1)?.getAll('jobTitle')).toEqual([
+        'Account Executive',
+        'Software Engineer',
+      ]),
+    );
+    expect(requests.at(-1)?.getAll('department')).toEqual(['Engineering']);
   });
 
   it('searches after typing stops', async () => {
@@ -109,6 +141,19 @@ describe('<EmployeesPage />', () => {
     await waitFor(() => expect(requests.at(-1)?.get('order')).toBe('desc'));
   });
 
+  it('sorts by annual salary in USD, then reverses it on a second click', async () => {
+    const requests = recordDirectoryRequests();
+    const { user } = renderPage();
+    await screen.findByRole('table', { name: 'Employees' });
+
+    await user.click(screen.getByRole('button', { name: 'Annual salary' }));
+    await waitFor(() => expect(requests.at(-1)?.get('sort')).toBe('salary'));
+    expect(requests.at(-1)?.get('order')).toBe('asc');
+
+    await user.click(screen.getByRole('button', { name: 'Annual salary' }));
+    await waitFor(() => expect(requests.at(-1)?.get('order')).toBe('desc'));
+  });
+
   it('moves to the next page', async () => {
     const requests = recordDirectoryRequests(() =>
       HttpResponse.json(pageOf([asha, john], { total: 60 })),
@@ -121,17 +166,43 @@ describe('<EmployeesPage />', () => {
     await waitFor(() => expect(requests.at(-1)?.get('page')).toBe('2'));
   });
 
-  it('shows leavers when asked, marked as left', async () => {
+  it('shows current employees by default, and former or all employees when chosen', async () => {
     const requests = recordDirectoryRequests(() =>
-      HttpResponse.json(pageOf([{ ...asha, status: 'left', leftOn: '2026-01-31' }])),
+      HttpResponse.json(pageOf([john, { ...asha, status: 'left', leftOn: '2026-01-31' }])),
     );
     const { user } = renderPage();
     await screen.findByRole('table', { name: 'Employees' });
+    const status = screen.getByRole('combobox', { name: 'Employees to show' });
+    expect(status).toHaveTextContent('Current employees');
+    expect(requests.at(-1)?.get('status')).toBe('active');
 
-    await user.click(screen.getByRole('switch', { name: 'Show leavers' }));
+    await user.click(status);
+    await user.click(await screen.findByRole('option', { name: 'Former employees' }));
+    await waitFor(() => expect(requests.at(-1)?.get('status')).toBe('left'));
+    expect(screen.getByTestId('url')).toHaveTextContent('?status=left');
 
-    await waitFor(() => expect(requests.at(-1)?.get('includeLeft')).toBe('true'));
-    expect(await screen.findByText('Left')).toBeInTheDocument();
+    await user.click(screen.getByRole('combobox', { name: 'Employees to show' }));
+    await user.click(await screen.findByRole('option', { name: 'All employees' }));
+    await waitFor(() => expect(requests.at(-1)?.get('status')).toBe('all'));
+  });
+
+  it('marks former employees clearly, with their leaving date on the info button', async () => {
+    recordDirectoryRequests(() =>
+      HttpResponse.json(pageOf([john, { ...asha, status: 'left', leftOn: '2026-01-31' }])),
+    );
+    const { user } = renderPage('/employees?status=all');
+
+    const table = await screen.findByRole('table', { name: 'Employees' });
+    const ashaRow = within(table).getByRole('row', { name: /Asha Verma/ });
+    expect(within(ashaRow).getByText('Former')).toBeInTheDocument();
+    const info = within(ashaRow).getByRole('button', {
+      name: 'Left on 31 Jan 2026. Their record and salary history are kept.',
+    });
+    const johnRow = within(table).getByRole('row', { name: /John Smith/ });
+    expect(within(johnRow).queryByText('Former')).not.toBeInTheDocument();
+
+    await user.hover(info);
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Left on 31 Jan 2026');
   });
 
   it('links each employee to their details page', async () => {
@@ -151,7 +222,7 @@ describe('<EmployeesPage />', () => {
 
     expect(exportLink).toHaveAttribute(
       'href',
-      '/api/employees/export?country=IN&sort=fullName&order=asc',
+      '/api/employees/export?country=IN&status=active&sort=fullName&order=asc',
     );
   });
 

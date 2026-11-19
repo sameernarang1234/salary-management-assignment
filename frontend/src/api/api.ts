@@ -25,10 +25,24 @@ import type {
   SignedInUser,
 } from './types';
 
+/** Lists become repeated parameters (country=IN&country=US), which the API reads as "any of". */
+function serializeParams(params: Record<string, unknown>): string {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    for (const item of Array.isArray(value) ? value : [value]) {
+      if (item !== undefined && item !== null && item !== '') {
+        search.append(key, String(item));
+      }
+    }
+  }
+  return search.toString();
+}
+
 const rawBaseQuery = fetchBaseQuery({
   // Absolute so the same code works in the browser and in tests; same origin as the app.
   baseUrl: new URL('/api/', window.location.origin).toString(),
   credentials: 'same-origin',
+  paramsSerializer: serializeParams,
 });
 
 /** Endpoints where a 401 is an expected answer, not an expired session. */

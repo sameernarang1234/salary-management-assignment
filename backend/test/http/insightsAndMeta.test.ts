@@ -112,7 +112,8 @@ describe('GET /api/meta', () => {
         { code: 'SPECIAL', name: 'Special Allowance', required: false },
       ],
       salaryChangeReasons: ['annual_increment', 'promotion', 'correction', 'other'],
-      sortFields: ['fullName', 'jobTitle', 'department', 'country', 'hireDate'],
+      sortFields: ['fullName', 'jobTitle', 'department', 'country', 'hireDate', 'salary'],
+      employeeStatuses: ['active', 'left', 'all'],
       filterOptions: { departments: ['Engineering'], jobTitles: ['Designer', 'Software Engineer'] },
       ratesAsOf: RATES_AS_OF,
     });

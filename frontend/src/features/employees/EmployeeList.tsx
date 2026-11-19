@@ -1,8 +1,10 @@
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import {
   Box,
   Card,
   CardContent,
   Chip,
+  IconButton,
   Link,
   Stack,
   Table,
@@ -12,6 +14,7 @@ import {
   TableHead,
   TableRow,
   TableSortLabel,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import { Link as RouterLink } from 'react-router';
@@ -29,7 +32,26 @@ interface TableProps extends ListProps {
   onSort: (field: EmployeeSortField) => void;
 }
 
+/**
+ * Former employees: name in muted italics, a "Former" chip, and an info button whose tooltip
+ * (also its accessible name) gives the leaving date.
+ */
+function FormerEmployeeMarker({ leftOn }: { leftOn: string | null }) {
+  const message = `Left on ${formatDate(leftOn ?? '')}. Their record and salary history are kept.`;
+  return (
+    <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.25 }}>
+      <Chip label="Former" size="small" variant="outlined" sx={{ color: 'text.secondary' }} />
+      <Tooltip title={message} arrow>
+        <IconButton size="small" aria-label={message} sx={{ color: 'text.secondary' }}>
+          <InfoOutlinedIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+    </Box>
+  );
+}
+
 function EmployeeName({ employee }: { employee: EmployeeSummary }) {
+  const isFormer = employee.status === 'left';
   return (
     <Box sx={{ minWidth: 0 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
@@ -37,11 +59,15 @@ function EmployeeName({ employee }: { employee: EmployeeSummary }) {
           component={RouterLink}
           to={`/employees/${employee.id}`}
           underline="hover"
-          sx={{ fontWeight: 700, color: 'text.primary' }}
+          sx={{
+            fontWeight: 700,
+            color: isFormer ? 'text.secondary' : 'text.primary',
+            fontStyle: isFormer ? 'italic' : 'normal',
+          }}
         >
           {employee.fullName}
         </Link>
-        {employee.status === 'left' && <Chip label="Left" size="small" color="default" />}
+        {isFormer && <FormerEmployeeMarker leftOn={employee.leftOn} />}
       </Box>
       <Typography variant="body2" color="text.secondary" noWrap>
         {employee.email}
@@ -95,7 +121,14 @@ export function EmployeeTable({ employees, countryName, sort, order, onSort }: T
             <TableCell sortDirection={direction('country')}>
               {sortLabel('country', 'Country')}
             </TableCell>
-            <TableCell align="right">Annual salary</TableCell>
+            <TableCell align="right" sortDirection={direction('salary')}>
+              <Tooltip
+                describeChild
+                title="Sorted by the USD equivalent, so salaries in different currencies compare fairly"
+              >
+                {sortLabel('salary', 'Annual salary')}
+              </Tooltip>
+            </TableCell>
             <TableCell sortDirection={direction('hireDate')}>
               {sortLabel('hireDate', 'Hired')}
             </TableCell>

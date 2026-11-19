@@ -1,16 +1,17 @@
-import type { EmployeeListParams, EmployeeSortField } from '../../api/types';
+import type { EmployeeListParams, EmployeeSortField, EmployeeStatusFilter } from '../../api/types';
 
 /** The directory's search, filters, sort and page: kept in the URL so views can be shared. */
 export interface DirectoryQuery {
   search?: string;
-  country?: string;
-  department?: string;
-  jobTitle?: string;
+  /** Any of these match; empty means no filter. */
+  countries: string[];
+  departments: string[];
+  jobTitles: string[];
+  status: EmployeeStatusFilter;
   sort: EmployeeSortField;
   order: 'asc' | 'desc';
   page: number;
   pageSize: number;
-  includeLeft: boolean;
 }
 
 export const PAGE_SIZES = [10, 25, 50, 100] as const;
@@ -21,32 +22,50 @@ const SORT_FIELDS: readonly EmployeeSortField[] = [
   'department',
   'country',
   'hireDate',
+  'salary',
 ];
 
+const STATUSES: readonly EmployeeStatusFilter[] = ['active', 'left', 'all'];
+
 export const DEFAULT_QUERY: DirectoryQuery = {
+  countries: [],
+  departments: [],
+  jobTitles: [],
+  status: 'active',
   sort: 'fullName',
   order: 'asc',
   page: 1,
   pageSize: 25,
-  includeLeft: false,
 };
+
+/** URL parameter name for each list filter (singular, repeated once per value). */
+const LIST_PARAMS = [
+  ['countries', 'country'],
+  ['departments', 'department'],
+  ['jobTitles', 'jobTitle'],
+] as const;
 
 const positiveInteger = (value: string | null) => {
   const number = Number(value);
   return value !== null && Number.isInteger(number) && number > 0 ? number : undefined;
 };
 
+/** Non-empty values in their first-seen order, without repeats. */
+const distinctValues = (values: string[]) => [...new Set(values.filter(Boolean))];
+
 /** Reads the query from the URL; anything missing or invalid falls back to the default. */
 export function fromSearchParams(params: URLSearchParams): DirectoryQuery {
   const sort = params.get('sort') as EmployeeSortField | null;
   const order = params.get('order');
+  const status = params.get('status') as EmployeeStatusFilter | null;
   const pageSize = positiveInteger(params.get('pageSize'));
 
   return {
     search: params.get('search') || undefined,
-    country: params.get('country') || undefined,
-    department: params.get('department') || undefined,
-    jobTitle: params.get('jobTitle') || undefined,
+    countries: distinctValues(params.getAll('country')),
+    departments: distinctValues(params.getAll('department')),
+    jobTitles: distinctValues(params.getAll('jobTitle')),
+    status: status && STATUSES.includes(status) ? status : DEFAULT_QUERY.status,
     sort: sort && SORT_FIELDS.includes(sort) ? sort : DEFAULT_QUERY.sort,
     order: order === 'asc' || order === 'desc' ? order : DEFAULT_QUERY.order,
     page: positiveInteger(params.get('page')) ?? DEFAULT_QUERY.page,
@@ -54,31 +73,24 @@ export function fromSearchParams(params: URLSearchParams): DirectoryQuery {
       pageSize !== undefined && (PAGE_SIZES as readonly number[]).includes(pageSize)
         ? pageSize
         : DEFAULT_QUERY.pageSize,
-    includeLeft: params.get('includeLeft') === 'true',
   };
 }
 
 /** Writes only values that differ from the defaults, keeping URLs short and readable. */
 export function toSearchParams(query: DirectoryQuery): URLSearchParams {
   const params = new URLSearchParams();
-  const keys = [
-    'search',
-    'country',
-    'department',
-    'jobTitle',
-    'sort',
-    'order',
-    'page',
-    'pageSize',
-  ] as const;
-  for (const key of keys) {
-    const value = query[key];
-    if (value !== undefined && value !== '' && value !== DEFAULT_QUERY[key]) {
-      params.set(key, String(value));
+  if (query.search) {
+    params.set('search', query.search);
+  }
+  for (const [field, name] of LIST_PARAMS) {
+    for (const value of query[field]) {
+      params.append(name, value);
     }
   }
-  if (query.includeLeft) {
-    params.set('includeLeft', 'true');
+  for (const key of ['status', 'sort', 'order', 'page', 'pageSize'] as const) {
+    if (query[key] !== DEFAULT_QUERY[key]) {
+      params.set(key, String(query[key]));
+    }
   }
   return params;
 }
@@ -94,34 +106,46 @@ export function updateQuery(
 
 export function hasActiveFilters(query: DirectoryQuery): boolean {
   return Boolean(
-    query.search || query.country || query.department || query.jobTitle || query.includeLeft,
+    query.search ||
+    query.countries.length ||
+    query.departments.length ||
+    query.jobTitles.length ||
+    query.status !== DEFAULT_QUERY.status,
   );
 }
 
 export function toApiParams(query: DirectoryQuery): EmployeeListParams {
-  const { includeLeft, ...rest } = query;
-  const params: EmployeeListParams = { ...rest };
-  for (const key of ['search', 'country', 'department', 'jobTitle'] as const) {
-    if (params[key] === undefined) {
-      delete params[key];
+  const params: EmployeeListParams = {
+    status: query.status,
+    sort: query.sort,
+    order: query.order,
+    page: query.page,
+    pageSize: query.pageSize,
+  };
+  if (query.search) {
+    params.search = query.search;
+  }
+  for (const [field, name] of LIST_PARAMS) {
+    if (query[field].length > 0) {
+      params[name] = query[field];
     }
   }
-  return includeLeft ? { ...params, includeLeft: 'true' } : params;
+  return params;
 }
 
-/** The CSV export of the current filters and sort (all pages). */
+/** The CSV export of the current filters, status and sort (all pages). */
 export function exportHref(query: DirectoryQuery): string {
   const params = new URLSearchParams();
-  for (const key of ['search', 'country', 'department', 'jobTitle'] as const) {
-    const value = query[key];
-    if (value) {
-      params.set(key, value);
+  if (query.search) {
+    params.set('search', query.search);
+  }
+  for (const [field, name] of LIST_PARAMS) {
+    for (const value of query[field]) {
+      params.append(name, value);
     }
   }
+  params.set('status', query.status);
   params.set('sort', query.sort);
   params.set('order', query.order);
-  if (query.includeLeft) {
-    params.set('includeLeft', 'true');
-  }
   return `/api/employees/export?${params.toString()}`;
 }

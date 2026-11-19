@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { RATES_AS_OF } from '../referenceData/countries.js';
 import { listCountries } from '../repositories/countries.js';
-import { EMPLOYEE_SORT_FIELDS } from '../repositories/employees.js';
+import { EMPLOYEE_SORT_FIELDS, EMPLOYEE_STATUSES } from '../repositories/employees.js';
 import { getFilterOptions } from '../repositories/filterOptions.js';
 import { SALARY_CHANGE_REASONS } from '../validators/salaryChange.js';
 import { SALARY_COMPONENT_CATALOGUE } from '../validators/salaryComponents.js';
@@ -21,6 +21,7 @@ export function metaRouter(dependencies: AppDependencies): Router {
       salaryComponents: SALARY_COMPONENT_CATALOGUE,
       salaryChangeReasons: SALARY_CHANGE_REASONS,
       sortFields: EMPLOYEE_SORT_FIELDS,
+      employeeStatuses: EMPLOYEE_STATUSES,
       filterOptions,
       ratesAsOf: RATES_AS_OF,
     });

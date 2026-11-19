@@ -19,9 +19,9 @@ HR Manager of the org (the only user): Comfortable with Excel but not technical,
 ## Scope and features (v1)
 
 - Login: A single HR Manager account (email and password), created by the seed script; there is no sign-up. Salary data is sensitive, so every page and API call requires the signed-in HR Manager.
-- Employee directory: Server-side search (name, email), filters (country, department, job title), sorting and pagination. Replaces scrolling a 10,000-row sheet.
+- Employee directory: Server-side search (name, email), filters (country, department, job title; several values can be chosen in each), current / former / all employees, sorting (including by annual salary, compared in USD across currencies) and pagination. Replaces scrolling a 10,000-row sheet.
 - Add and edit employees with validation (required fields, valid and unique email, known country, valid salary components).
-- Mark as left instead of deleting: The employee leaves the active directory, insights and exports, but their record and salary history are kept.
+- Mark as left instead of deleting: The employee leaves the active directory, insights and exports, but their record and salary history are kept; former employees can still be listed, and are clearly marked.
 - Salary components: Each salary is made of components from a fixed catalogue (Basic is required; allowances such as House Rent, Housing, Transport and Special allowance are optional). Total annual salary is the sum of the components.
 - Employee details page: Opens when an employee is clicked in the directory; shows their details, salary breakdown by component, and salary history.
 - Salary history: Every salary change records the old and new components and totals, the effective date, a reason (annual increment, protion, correction or other), and when the change was made. History entries cannot be edited or deleted.

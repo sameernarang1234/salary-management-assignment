@@ -20,7 +20,8 @@ export const testMeta: Meta = {
     { code: 'SPECIAL', name: 'Special Allowance', required: false },
   ],
   salaryChangeReasons: ['annual_increment', 'promotion', 'correction', 'other'],
-  sortFields: ['fullName', 'jobTitle', 'department', 'country', 'hireDate'],
+  sortFields: ['fullName', 'jobTitle', 'department', 'country', 'hireDate', 'salary'],
+  employeeStatuses: ['active', 'left', 'all'],
   filterOptions: {
     departments: ['Engineering', 'Sales'],
     jobTitles: ['Account Executive', 'Software Engineer'],

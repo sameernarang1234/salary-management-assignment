@@ -57,10 +57,10 @@ describe('seedDatabase', () => {
 
   it('replaces existing data and gives the same result every run', async () => {
     await seed(100);
-    const first = await listEmployees(testPrisma, { page: 1, pageSize: 100, includeLeft: true });
+    const first = await listEmployees(testPrisma, { page: 1, pageSize: 100, status: 'all' });
 
     await seed(100);
-    const second = await listEmployees(testPrisma, { page: 1, pageSize: 100, includeLeft: true });
+    const second = await listEmployees(testPrisma, { page: 1, pageSize: 100, status: 'all' });
 
     expect(second).toEqual(first);
     expect(await testPrisma.employee.count()).toBe(100);

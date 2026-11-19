@@ -118,7 +118,8 @@ Notes on the model:
 | **Aggregates in PostgreSQL** (`percentile_cont(0.5)` for median, `min`/`avg`/`max`, `GROUP BY`) via `$queryRaw` tagged templates | Only small result rows leave the database; fast at any size | Raw SQL isn't type-checked by Prisma, so results are parsed with Zod and covered by tests with hand-calculated answers |
 | **Redux for app state, RTK Query for server data** | Uses Redux as requested without hand-writing loading/caching logic | More setup than plain hooks for a small app |
 | **Express serves the built frontend in production** | One deployable service, no CORS | Static files would ideally sit on a CDN |
-| **Offset pagination** (`skip`/`take`) | "Page 3 of 400" and totals are what HR expects | Slower for very deep pages on huge tables; not an issue at 10k |
+| **Directory list as one parameterised SQL query** (`$queryRaw`) | Sorting by annual salary needs the component total converted to USD, which Prisma's query builder can't express | Not type-checked by Prisma: results are parsed with Zod; sort columns come from an allow-list and every value is a bound parameter |
+| **Offset pagination** (`LIMIT`/`OFFSET`) | "Page 3 of 400" and totals are what HR expects | Slower for very deep pages on huge tables; not an issue at 10k |
 
 ## 4. Architecture (backend)
 

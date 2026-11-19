@@ -1,6 +1,10 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { EMPLOYEE_SORT_FIELDS, type EmployeeListQuery } from '../repositories/employees.js';
+import {
+  EMPLOYEE_SORT_FIELDS,
+  EMPLOYEE_STATUSES,
+  type EmployeeListQuery,
+} from '../repositories/employees.js';
 import { parse } from '../services/context.js';
 import { getEmployee, getSalaryHistory, listDirectory, withUsd } from '../services/directory.js';
 import {
@@ -14,18 +18,25 @@ import type { AppDependencies } from './dependencies.js';
 
 const MAX_PAGE_SIZE = 100;
 const MAX_EXPORT_ROWS = 50_000;
+const MAX_FILTER_VALUES = 50;
+
+/** A filter that can be repeated (?country=IN&country=US): any of the values matches. */
+const multiValue = z
+  .union([z.string(), z.array(z.string())])
+  .optional()
+  .transform((value) => (value === undefined ? [] : Array.isArray(value) ? value : [value]))
+  .refine((values) => values.length <= MAX_FILTER_VALUES, {
+    error: `Choose at most ${MAX_FILTER_VALUES} values`,
+  });
 
 const filtersShape = {
   search: z.string().optional(),
-  country: z.string().optional(),
-  department: z.string().optional(),
-  jobTitle: z.string().optional(),
+  country: multiValue,
+  department: multiValue,
+  jobTitle: multiValue,
+  status: z.enum(EMPLOYEE_STATUSES).default('active'),
   sort: z.enum(EMPLOYEE_SORT_FIELDS).optional(),
   order: z.enum(['asc', 'desc']).optional(),
-  includeLeft: z
-    .enum(['true', 'false'])
-    .optional()
-    .transform((value) => value === 'true'),
 };
 
 const listQuerySchema = z.object({
@@ -43,11 +54,18 @@ const idParamsSchema = z.object({
 type Filters = z.output<typeof exportQuerySchema>;
 
 function toListQuery(
-  { country, ...filters }: Filters,
+  { country, department, jobTitle, ...filters }: Filters,
   page: number,
   pageSize: number,
 ): EmployeeListQuery {
-  return { ...filters, countryCode: country, page, pageSize };
+  return {
+    ...filters,
+    countryCodes: country,
+    departments: department,
+    jobTitles: jobTitle,
+    page,
+    pageSize,
+  };
 }
 
 const CSV_HEADERS = [

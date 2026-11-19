@@ -6,11 +6,9 @@ import {
   Button,
   Card,
   CardContent,
-  FormControlLabel,
   InputAdornment,
   LinearProgress,
   MenuItem,
-  Switch,
   TablePagination,
   TextField,
   Typography,
@@ -37,11 +35,23 @@ import {
 } from './directoryQuery';
 import { EmployeeFormDialog } from './EmployeeFormDialog';
 import { EmployeeCards, EmployeeTable } from './EmployeeList';
+import { MultiSelectFilter, type FilterOption } from './MultiSelectFilter';
+
+const STATUS_OPTIONS: { value: DirectoryQuery['status']; label: string }[] = [
+  { value: 'active', label: 'Current employees' },
+  { value: 'left', label: 'Former employees' },
+  { value: 'all', label: 'All employees' },
+];
+
+const asOptions = (values: readonly string[] | undefined): FilterOption[] =>
+  (values ?? []).map((value) => ({ value, label: value }));
 
 /** Sort choices for phones, where there are no column headers to click. */
 const MOBILE_SORTS: { value: string; label: string }[] = [
   { value: 'fullName:asc', label: 'Name (A–Z)' },
   { value: 'fullName:desc', label: 'Name (Z–A)' },
+  { value: 'salary:desc', label: 'Salary, highest first (in USD)' },
+  { value: 'salary:asc', label: 'Salary, lowest first (in USD)' },
   { value: 'hireDate:desc', label: 'Most recently hired' },
   { value: 'hireDate:asc', label: 'Longest serving' },
   { value: 'department:asc', label: 'Department' },
@@ -86,17 +96,16 @@ export function EmployeesPage() {
     setSearchText('');
     setQuery({
       search: undefined,
-      country: undefined,
-      department: undefined,
-      jobTitle: undefined,
-      includeLeft: false,
+      countries: [],
+      departments: [],
+      jobTitles: [],
+      status: 'active',
     });
   };
 
   const countryNames = new Map(meta.data?.countries.map((country) => [country.code, country.name]));
   const countryName = (code: string) => countryNames.get(code) ?? code;
   const page = employees.data;
-  const filterValue = (value: string | undefined) => (meta.data ? (value ?? '') : '');
 
   return (
     <>
@@ -139,7 +148,7 @@ export function EmployeesPage() {
               display: 'grid',
               gap: 2,
               alignItems: 'center',
-              gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: '2fr 1fr 1fr 1.4fr' },
+              gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: '1.6fr 1fr 1fr 1.2fr 1fr' },
             }}
           >
             <TextField
@@ -157,66 +166,48 @@ export function EmployeesPage() {
                 },
               }}
             />
-            <TextField
-              select
+            <MultiSelectFilter
               label="Country"
-              value={filterValue(query.country)}
-              onChange={(event) => setQuery({ country: event.target.value || undefined })}
-            >
-              <MenuItem value="">All countries</MenuItem>
-              {meta.data?.countries.map((country) => (
-                <MenuItem key={country.code} value={country.code}>
-                  {country.name}
-                </MenuItem>
-              ))}
-            </TextField>
-            <TextField
-              select
+              allLabel="All countries"
+              options={
+                meta.data?.countries.map((country) => ({
+                  value: country.code,
+                  label: country.name,
+                })) ?? []
+              }
+              selected={query.countries}
+              onChange={(countries) => setQuery({ countries })}
+            />
+            <MultiSelectFilter
               label="Department"
-              value={filterValue(query.department)}
-              onChange={(event) => setQuery({ department: event.target.value || undefined })}
-            >
-              <MenuItem value="">All departments</MenuItem>
-              {meta.data?.filterOptions.departments.map((department) => (
-                <MenuItem key={department} value={department}>
-                  {department}
-                </MenuItem>
-              ))}
-            </TextField>
+              allLabel="All departments"
+              options={asOptions(meta.data?.filterOptions.departments)}
+              selected={query.departments}
+              onChange={(departments) => setQuery({ departments })}
+            />
+            <MultiSelectFilter
+              label="Job title"
+              allLabel="All job titles"
+              options={asOptions(meta.data?.filterOptions.jobTitles)}
+              selected={query.jobTitles}
+              onChange={(jobTitles) => setQuery({ jobTitles })}
+            />
             <TextField
               select
-              label="Job title"
-              value={filterValue(query.jobTitle)}
-              onChange={(event) => setQuery({ jobTitle: event.target.value || undefined })}
+              label="Employees to show"
+              value={query.status}
+              onChange={(event) =>
+                setQuery({ status: event.target.value as DirectoryQuery['status'] })
+              }
             >
-              <MenuItem value="">All job titles</MenuItem>
-              {meta.data?.filterOptions.jobTitles.map((jobTitle) => (
-                <MenuItem key={jobTitle} value={jobTitle}>
-                  {jobTitle}
+              {STATUS_OPTIONS.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
                 </MenuItem>
               ))}
             </TextField>
           </Box>
-          <Box
-            sx={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: 1,
-              mt: 1.5,
-            }}
-          >
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={query.includeLeft}
-                  onChange={(event) => setQuery({ includeLeft: event.target.checked })}
-                  slotProps={{ input: { role: 'switch' } }}
-                />
-              }
-              label="Show leavers"
-            />
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1.5 }}>
             <Button onClick={clearFilters} disabled={!hasActiveFilters(query) && !searchText}>
               Clear filters
             </Button>

@@ -147,21 +147,60 @@ describe('GET /api/employees', () => {
     ]);
   });
 
-  it('includes leavers only when asked', async () => {
+  it('matches any of several values given for one filter', async () => {
+    await create(asha);
+    await create(john);
+    await create({
+      ...asha,
+      email: 'emma@acme.example',
+      fullName: 'Emma Brown',
+      countryCode: 'GB',
+    });
+
+    const names = async (query: string) =>
+      (await api.get(`/api/employees?${query}`)).body.items.map(
+        (e: { fullName: string }) => e.fullName,
+      );
+
+    expect(await names('country=IN&country=US')).toEqual(['Asha Verma', 'John Smith']);
+    expect(await names('country=GB')).toEqual(['Emma Brown']);
+  });
+
+  it('sorts by total salary in USD', async () => {
+    await create(asha); // ₹16,80,000 → $20,160
+    await create(john); // $120,000
+
+    const response = await api.get('/api/employees?sort=salary&order=desc');
+
+    expect(response.body.items.map((e: { fullName: string }) => e.fullName)).toEqual([
+      'John Smith',
+      'Asha Verma',
+    ]);
+  });
+
+  it('filters by employment status: current by default, former, or all', async () => {
     const id = await create(asha);
+    await create(john);
     await api.post(`/api/employees/${id}/leave`, { leftOn: '2026-06-01' });
 
-    expect((await api.get('/api/employees')).body.total).toBe(0);
-    expect((await api.get('/api/employees?includeLeft=true')).body.total).toBe(1);
+    const names = async (query: string) =>
+      (await api.get(`/api/employees${query}`)).body.items.map(
+        (e: { fullName: string }) => e.fullName,
+      );
+
+    expect(await names('')).toEqual(['John Smith']);
+    expect(await names('?status=active')).toEqual(['John Smith']);
+    expect(await names('?status=left')).toEqual(['Asha Verma']);
+    expect(await names('?status=all')).toEqual(['Asha Verma', 'John Smith']);
   });
 
   it.each([
     ['page=0', 'page'],
     ['pageSize=101', 'pageSize'],
-    ['sort=salary', 'sort'],
+    ['sort=bonus', 'sort'],
     ['order=up', 'order'],
-    ['includeLeft=maybe', 'includeLeft'],
-    ['country=IN&country=US', 'country'],
+    ['status=maybe', 'status'],
+    [Array.from({ length: 51 }, () => 'country=IN').join('&'), 'country'],
   ])('returns 400 for the invalid query %s', async (query, field) => {
     const response = await api.get(`/api/employees?${query}`);
 
@@ -189,6 +228,19 @@ describe('GET /api/employees/export', () => {
         /^\d+,Asha Verma,asha\.verma@acme\.example,Software Engineer,Engineering,IN,INR,2023-04-01,active,,1680000,20160$/,
       ),
     ]);
+  });
+
+  it('exports the same multi-value and status filters as the directory', async () => {
+    const id = await create(asha);
+    await create(john);
+    await api.post(`/api/employees/${id}/leave`, { leftOn: '2026-06-01' });
+
+    const response = await api.get('/api/employees/export?country=IN&country=US&status=left');
+
+    const rows = response.text.replace('﻿', '').trim().split('\r\n').slice(1);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toContain('Asha Verma');
+    expect(rows[0]).toContain(',left,2026-06-01,');
   });
 
   it('neutralises spreadsheet formulas in names', async () => {

@@ -225,31 +225,63 @@ describe('listEmployees', () => {
     );
 
     it('returns no rows for injection text in filters', async () => {
-      expect(await names({ department: "Engineering' OR '1'='1" })).toEqual([]);
-      expect(await names({ countryCode: "IN' OR '1'='1" })).toEqual([]);
-      expect(await names({ jobTitle: "x' OR 1=1 --" })).toEqual([]);
+      expect(await names({ departments: ["Engineering' OR '1'='1"] })).toEqual([]);
+      expect(await names({ countryCodes: ["IN' OR '1'='1"] })).toEqual([]);
+      expect(await names({ jobTitles: ["x' OR 1=1 --"] })).toEqual([]);
     });
   });
 
   describe('filters', () => {
     it('filters by country', async () => {
-      expect(await names({ countryCode: 'US' })).toEqual(['Carlos Diaz', 'John Smith']);
+      expect(await names({ countryCodes: ['US'] })).toEqual(['Carlos Diaz', 'John Smith']);
     });
 
     it('filters by department', async () => {
-      expect(await names({ department: 'Engineering' })).toEqual(['Asha Verma', 'John Smith']);
+      expect(await names({ departments: ['Engineering'] })).toEqual(['Asha Verma', 'John Smith']);
     });
 
     it('filters by job title', async () => {
-      expect(await names({ jobTitle: 'Designer' })).toEqual(['Emma Brown']);
+      expect(await names({ jobTitles: ['Designer'] })).toEqual(['Emma Brown']);
     });
 
     it('combines filters and search', async () => {
-      expect(await names({ department: 'Engineering', countryCode: 'IN' })).toEqual(['Asha Verma']);
-      expect(await names({ jobTitle: 'Software Engineer', search: 'john' })).toEqual([
+      expect(await names({ departments: ['Engineering'], countryCodes: ['IN'] })).toEqual([
+        'Asha Verma',
+      ]);
+      expect(await names({ jobTitles: ['Software Engineer'], search: 'john' })).toEqual([
         'John Smith',
       ]);
-      expect(await names({ countryCode: 'GB', department: 'Engineering' })).toEqual([]);
+      expect(await names({ countryCodes: ['GB'], departments: ['Engineering'] })).toEqual([]);
+    });
+
+    it('matches any of several countries', async () => {
+      expect(await names({ countryCodes: ['GB', 'US'] })).toEqual([
+        'Carlos Diaz',
+        'Emma Brown',
+        'John Smith',
+      ]);
+    });
+
+    it('matches any of several departments and job titles', async () => {
+      expect(await names({ departments: ['Design', 'Finance'] })).toEqual([
+        'Carlos Diaz',
+        'Emma Brown',
+      ]);
+      expect(await names({ jobTitles: ['Designer', 'Product Manager'] })).toEqual([
+        'Emma Brown',
+        'Rahul Mehta',
+      ]);
+    });
+
+    it('combines several values in one filter with another filter', async () => {
+      expect(await names({ countryCodes: ['IN', 'US'], departments: ['Engineering'] })).toEqual([
+        'Asha Verma',
+        'John Smith',
+      ]);
+    });
+
+    it('treats an empty list as no filter', async () => {
+      expect(await names({ countryCodes: [], departments: [], jobTitles: [] })).toHaveLength(5);
     });
   });
 
@@ -323,6 +355,64 @@ describe('listEmployees', () => {
         'Emma Brown', // 2020-09-01
       ]);
     });
+
+    describe('by salary', () => {
+      // Local amounts and their USD value (IN 0.012, GB 1.27, US 1). In local units Asha's
+      // rupees are the biggest number, so a sort by local amount would put her last.
+      beforeEach(async () => {
+        const salaries: Record<string, number> = {
+          'asha.verma@acme.example': 1_200_000, // ₹ → $14,400
+          'rahul.mehta@acme.example': 2_500_000, // ₹ → $30,000
+          'emma_b@acme.example': 60_000, // £ → $76,200
+          'carlos.diaz@acme.example': 80_000, // $ → $80,000
+          'john.smith@acme.example': 120_000, // $ → $120,000
+        };
+        const { items } = await listEmployees(testPrisma, query());
+        for (const employee of items) {
+          await replaceSalaryComponents(testPrisma, employee.id, [
+            { code: 'BASIC', annualAmount: salaries[employee.email]! },
+          ]);
+        }
+      });
+
+      it('sorts by the total in USD, lowest first', async () => {
+        expect(await names({ sort: 'salary' })).toEqual([
+          'Asha Verma',
+          'Rahul Mehta',
+          'Emma Brown',
+          'Carlos Diaz',
+          'John Smith',
+        ]);
+      });
+
+      it('sorts by the total in USD, highest first', async () => {
+        expect(await names({ sort: 'salary', order: 'desc' })).toEqual([
+          'John Smith',
+          'Carlos Diaz',
+          'Emma Brown',
+          'Rahul Mehta',
+          'Asha Verma',
+        ]);
+      });
+
+      it('includes every component in the total it sorts by', async () => {
+        const asha = (await listEmployees(testPrisma, query({ search: 'asha' }))).items[0]!;
+        await replaceSalaryComponents(testPrisma, asha.id, [
+          { code: 'BASIC', annualAmount: 1_200_000 },
+          { code: 'SPECIAL', annualAmount: 9_000_000 }, // total ₹1,02,00,000 → $122,400
+        ]);
+
+        expect((await names({ sort: 'salary', order: 'desc' }))[0]).toBe('Asha Verma');
+      });
+
+      it('pages through salary order without repeating or skipping anyone', async () => {
+        const first = await names({ sort: 'salary', pageSize: 2, page: 1 });
+        const second = await names({ sort: 'salary', pageSize: 2, page: 2 });
+        const third = await names({ sort: 'salary', pageSize: 2, page: 3 });
+
+        expect([...first, ...second, ...third]).toEqual(await names({ sort: 'salary' }));
+      });
+    });
   });
 
   describe('paging', () => {
@@ -340,26 +430,43 @@ describe('listEmployees', () => {
     });
 
     it('counts only the rows matching the filters', async () => {
-      const page = await listEmployees(testPrisma, query({ countryCode: 'IN', pageSize: 1 }));
+      const page = await listEmployees(testPrisma, query({ countryCodes: ['IN'], pageSize: 1 }));
 
       expect(page.items).toHaveLength(1);
       expect(page.total).toBe(2);
     });
   });
 
-  describe('leavers', () => {
-    it('are hidden by default', async () => {
+  describe('employment status', () => {
+    it('shows current employees by default', async () => {
       expect(await names({ search: 'olivia' })).toEqual([]);
+      expect((await listEmployees(testPrisma, query())).total).toBe(5);
     });
 
-    it('are shown when asked for', async () => {
-      const page = await listEmployees(testPrisma, query({ includeLeft: true }));
+    it('shows only current employees when asked for "active"', async () => {
+      expect((await listEmployees(testPrisma, query({ status: 'active' }))).total).toBe(5);
+    });
+
+    it('shows only former employees when asked for "left"', async () => {
+      const page = await listEmployees(testPrisma, query({ status: 'left' }));
+
+      expect(page.items.map((employee) => employee.fullName)).toEqual(['Olivia Left']);
+      expect(page.items[0]).toMatchObject({ status: 'left', leftOn: '2025-01-31' });
+    });
+
+    it('shows everyone when asked for "all"', async () => {
+      const page = await listEmployees(testPrisma, query({ status: 'all' }));
 
       expect(page.total).toBe(6);
       expect(page.items.find((employee) => employee.fullName === 'Olivia Left')).toMatchObject({
         status: 'left',
         leftOn: '2025-01-31',
       });
+    });
+
+    it('combines the status with other filters', async () => {
+      expect(await names({ status: 'left', countryCodes: ['GB'] })).toEqual(['Olivia Left']);
+      expect(await names({ status: 'left', countryCodes: ['US'] })).toEqual([]);
     });
   });
 
